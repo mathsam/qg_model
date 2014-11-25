@@ -333,6 +333,7 @@ contains
 
     use io_tools,  only: Message, Pass_params
     use par_tools, only: processor_id, par_bcast
+    use nc_io_tools, only : pass_params_nc_io
 
     character(80)         :: progname='',datadirin='',inputfilein='',fnamein=''
     integer               :: fin=7, iock, nchars
@@ -363,6 +364,7 @@ contains
     ! Send info to io_tools 
 
     call Pass_params(datadir,recunit,processor_id,io_root) 
+    call pass_params_nc_io(processor_id,io_root)
 
     call Message('')
     call Message('SQG model version: '//trim(version))

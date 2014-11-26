@@ -11,7 +11,6 @@ module qg_output
 
   implicit none
   private
-  integer :: history_file_id, restart_file_id
   integer :: psi_var_id, tracerx_var_id, tracery_var_id, time_var_id
   integer :: restart_psi_var_id, restart_tracerx_var_id,   &
              restart_tracery_var_id, restart_force_var_id
@@ -39,7 +38,8 @@ contains
                             create_axis_time, create_axis_kx, create_axis_ky,&
                             create_axis_z, create_axis_real_and_imag
 
-    integer :: axis_kx_id, axis_ky_id, axis_z_id, axis_time_id, axis_compl_id
+    integer :: axis_kx_id, axis_ky_id, axis_z_id, axis_time_id, axis_compl_id, &
+               history_file_id
 
     restart: if (restarting) then
 
@@ -195,6 +195,48 @@ contains
 
   !*********************************************************************
 
+  subroutine init_write_restarts()
+    use qg_params,   only : use_tracer_x, use_tracer_y, use_forcing,         &
+                            nc_restartfile  
+    use nc_io_tools, only : create_file, enddef_file, register_variable,     &
+                            create_axis_time, create_axis_kx, create_axis_ky,&
+                            create_axis_z, create_axis_real_and_imag
+    use io_tools,    only : Message
+    integer :: axis_kx_id, axis_ky_id, axis_z_id, axis_time_id, axis_compl_id, &
+               restart_file_id
+
+    ! although in this model, restart file only contains one time frame,
+    ! we still need to create time axis as that is required by nc_io_tools
+    restart_file_id = create_file("./RESTART/"//trim(nc_restartfile))
+
+    axis_time_id    = create_axis_time(restart_file_id) 
+    axis_kx_id      = create_axis_kx(restart_file_id)
+    axis_ky_id      = create_axis_ky(restart_file_id)
+    axis_z_id       = create_axis_z(restart_file_id)
+    axis_compl_id   = create_axis_real_and_imag(restart_file_id)
+
+    restart_psi_var_id = register_variable(restart_file_id, "psi",  &
+      (/axis_z_id, axis_kx_id, axis_ky_id, axis_compl_id, axis_time_id/), .true.)
+
+    if (use_tracer_x) restart_tracerx_var_id = &
+                  register_variable(restart_file_id, "tracer_x",  &
+      (/axis_z_id, axis_kx_id, axis_ky_id, axis_compl_id, axis_time_id/), .true.)
+
+    if (use_tracer_y) restart_tracery_var_id = &
+                  register_variable(restart_file_id, "tracer_y",  &
+      (/axis_z_id, axis_kx_id, axis_ky_id, axis_compl_id, axis_time_id/), .true.)
+
+    ! random forcing does not have z dimension but is only 2d
+    if (use_forcing) restart_force_var_id    = &
+                  register_variable(restart_file_id, "forcing",  &
+      (/axis_kx_id, axis_ky_id, axis_compl_id, axis_time_id/), .true.)
+
+    call enddef_file(restart_file_id)
+
+    call Message("Restart file "//trim(nc_restartfile)//" initialized")
+
+  end subroutine init_write_restarts
+
   function Write_restarts(framein) result(frameout)
 
     !**************************************************************
@@ -212,6 +254,7 @@ contains
     use qg_tracers,  only: tracer_x, tracer_y
     use rmf_forcing, only: force_o
     use par_tools,   only: par_gather
+    use nc_io_tools, only: write_nc
 
     integer,intent(in)                      :: framein
     integer                                 :: frameout
@@ -220,10 +263,14 @@ contains
 
     frameout = framein + 1                ! Update field frame counter
 
+    call init_write_restarts() ! create NetCDF file and register variables
+
     allocate(psi_global(1:nz,-kmax-1:kmax,0:kmax))
     psi_global=0.
     call par_gather(psi,psi_global,io_root)
     call Write_field(psi_global(:,-kmax:kmax,:),psi_restart_file,zfirst=1)
+    call write_nc(restart_psi_var_id, psi_global(:,-kmax:kmax,:)) 
+    
     deallocate(psi_global)
 
     if (use_tracer_x.or.use_tracer_y) then
@@ -231,11 +278,13 @@ contains
        tracer_global = 0.
        if (use_tracer_x) then
           call par_gather(tracer_x,tracer_global,io_root)
-          call Write_field(tracer_global(:,-kmax:kmax,:),tracer_x_restart_file,zfirst=1) 
+          call Write_field(tracer_global(:,-kmax:kmax,:),tracer_x_restart_file,zfirst=1)
+          call write_nc(restart_tracerx_var_id, tracer_global(:,-kmax:kmax,:))
        endif
        if (use_tracer_y) then
           call par_gather(tracer_y,tracer_global,io_root)
-          call Write_field(tracer_global(:,-kmax:kmax,:),tracer_y_restart_file,zfirst=1) 
+          call Write_field(tracer_global(:,-kmax:kmax,:),tracer_y_restart_file,zfirst=1)
+          call write_nc(restart_tracery_var_id, tracer_global(:,-kmax:kmax,:))
        endif
        deallocate(tracer_global)
     endif
@@ -245,6 +294,7 @@ contains
        force_o_global = 0.
        call par_gather(force_o,force_o_global,io_root)
        call Write_field(force_o_global,force_o_file)
+       call write_nc(restart_force_var_id, force_o_global(-kmax:kmax,:))
        deallocate(force_o_global)
     endif
 

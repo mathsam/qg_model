@@ -198,6 +198,7 @@ module qg_params                   !-*-f90-*-
   character(80)           :: datadir                = '.'
   character(20)           :: inputfile              = 'input.nml'
   character(20)           :: restartfile            = 'restart.nml'
+  character(20)           :: nc_restartfile         = 'restart.nc' !NetCDF restart
   character(20)           :: psi_file               = 'psi'         ! Psi snapshots 
   character(20)           :: psi_restart_file       = 'psi_restart' ! Psi snapshots 
   character(20)           :: force_o_file           = 'force_o'     ! Forcing 

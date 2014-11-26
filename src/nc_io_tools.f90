@@ -15,7 +15,8 @@ module nc_io_tools
   ! For another example, total energy in qg_diagnostics takes 2 dimensions
   !
   ! Sample usage:
-  ! need to store file_id and var_id in the calling modules
+  ! only need to store var_id in the calling modules, and other variables 
+  ! can/should be kept local
   ! in this paralleled version, fields are stored differently compared with
   ! the serial version
   ! for example, psi(1:nz, kx_start:kx_end, 0:kmax) in this version
@@ -39,7 +40,7 @@ module nc_io_tools
   !  
   !   call write_nc(var_psi_id, psi_global)
   !   
-  !   call close_file(file_id)
+  !   call close_all_files()
   !
   ! Algorithm:
   !  Use file_info_list to keep track of all the NetCDF files that has been

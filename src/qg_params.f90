@@ -342,6 +342,7 @@ contains
     character(80)         :: progname='',datadirin='',inputfilein='',fnamein=''
     integer               :: fin=7, iock, nchars
     logical               :: restart_exists=.false.
+    logical               :: restart_dir_exists = .false.
 
     if (processor_id == io_root) then
        ! Get executable name
@@ -359,6 +360,19 @@ contains
        if (restart_exists) inputfile = restartfile
        call getarg(2,inputfilein)
        if (trim(inputfilein)/='') inputfile = inputfilein
+
+       ! Check if ./INPUT and ./RESTART directories exists; otherwise stop
+       inquire(DIRECTORY="./INPUT",   EXIST = restart_dir_exists)
+       if (.not. restart_dir_exists) then
+           call Message('INPUT dir does not exist. Exiting!')
+           Stop "Stopping"
+       endif
+
+       inquire(DIRECTORY="./RESTART", EXIST = restart_dir_exists)
+       if (.not. restart_dir_exists) then
+           call Message('RESTART dir does not exist. Exiting!')
+           Stop "Stopping"
+       endif
 
     endif
     call par_bcast(progname,io_root)
@@ -438,12 +452,6 @@ contains
        write (unit=outf,nml=run_params,iostat=iock)
        if (iock /= 0) call Message('write params nml write error; &
             &iock =',tag=iock,fatal='y')
-       close(outf)
-
-       ! Write params to bin file for reading with MATLAB SQG function getparams.m
-
-       call Open_file(outf,'parameters','unknown',8)
-       write(unit=outf,rec=1) kmax,nz,F,beta,bot_drag,d1frame,d2frame,frame
        close(outf)
 
     endif

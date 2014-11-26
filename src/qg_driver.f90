@@ -59,19 +59,15 @@ program qg_driver
      start = (cntr==1)     ! Start flag
 
      ! Calculate diagnostics, write output
-     if (mod(cntr,diag1_step)==0.or.start) then
+     if (mod(cntr,diag1_step)==0) then
         if (do_energetics) d1frame = Get_energetics(d1frame)
      endif
-     if (do_spectra.and.(mod(cntr,diag2_step)==0.or.start)) then
+     if (do_spectra.and.(mod(cntr,diag2_step)==0)) then
         d2frame = Get_spectra(d2frame)
         if (do_corrs) call Get_corrs(d2frame)
      endif
-     if (mod(cntr,write_step)==0.or.start) then
+     if (mod(cntr,write_step)==0) then
         frame = Write_snapshots(frame)
-     endif
-     if (mod(cntr,restart_step)==0.or.start) then
-        restart_frame = Write_restarts(restart_frame)
-        if (stop_run()) exit   ! Check whether to stop run - in qg_params
      endif
      ! Adapt dt - enstrophy ensured non-zero in initialization.
      if (adapt_dt.and.(mod(cntr,dt_step)==0.or.start)) then
@@ -93,6 +89,7 @@ program qg_driver
   enddo  ! End of main time loop
 
   call Message('Calculation done')
+  restart_frame = Write_restarts(restart_frame)
   call end_write_snapshots()
   call End_par
   

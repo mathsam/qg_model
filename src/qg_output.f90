@@ -11,8 +11,10 @@ module qg_output
 
   implicit none
   private
-  integer :: history_file_id
+  integer :: history_file_id, restart_file_id
   integer :: psi_var_id, tracerx_var_id, tracery_var_id, time_var_id
+  integer :: restart_psi_var_id, restart_tracerx_var_id,   &
+             restart_tracery_var_id, restart_force_var_id
   save
 
   public :: init_counters, write_restarts, write_snapshots, end_write_snapshots
@@ -105,7 +107,7 @@ contains
 
     endif restart
 
-    cnt = cntr
+    cnt = 1 
 
     call Message('Counters initialized')
 
@@ -253,7 +255,7 @@ contains
     endif
 
     call Write_parameters            ! Write params for restart.nml
-    call Write_field(time,restart_time_file,frame=frameout)  
+!    call Write_field(time,restart_time_file,frame=frameout) ! no need for this 
     call Message('Wrote restarts')
 
   end function Write_restarts

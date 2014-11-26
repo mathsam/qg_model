@@ -24,15 +24,15 @@ module nc_io_tools
   !       (/axis_z_id, axis_kx_id, axis_ky_id, axis_compl_id, axis_time_id/), .true.)
   !   call enddef_file(file_id)
   !  
-  !   write_nc(var_psi_id, psi_global)
+  !   call write_nc(var_psi_id, psi_global)
   !   
   !   call close_file(file_id)
   !*************************************************************************
 
   use netcdf
-  use qg_params,     only: kmax, nz ! those values are not changed when parallized
   implicit none
   private
+
   type t_var_info
     integer:: framenum   = 1
     integer:: nc_var_id     = -1
@@ -62,6 +62,7 @@ module nc_io_tools
   integer            :: current_file_num = 1
 
   integer :: my_pe, io_root
+  integer :: kmax, nz ! same as that in qg_params
   save
 
   public :: pass_params_nc_io, create_file, enddef_file, close_file, &
@@ -79,14 +80,19 @@ module nc_io_tools
 
 contains
 
-  subroutine pass_params_nc_io(processor_id_in, io_root_in)
-    integer, intent(in):: processor_id_in, io_root_in
-    my_pe = processor_id_in
+  subroutine pass_params_nc_io(processor_id_in, io_root_in, kmax_in, nz_in)
+    integer, intent(in):: processor_id_in, io_root_in, kmax_in, nz_in
+    my_pe   = processor_id_in
     io_root = io_root_in
+    kmax    = kmax_in
+    nz      = nz_in
   end subroutine pass_params_nc_io
 
-  subroutine handle_err(status)
+  subroutine handle_err(status, err_message)
      integer, intent ( in) :: status
+     character(*), intent (in), optional :: err_message
+
+     if(present(err_message)) print *, err_message
  
      if(status /= nf90_noerr) then
        print *, trim(nf90_strerror(status))
@@ -117,7 +123,7 @@ contains
 
     status = nf90_create(path = file_name, cmode = nf90_clobber,&
                          ncid = file_id)
-    if (status /= nf90_noerr) call handle_err(status)
+    if (status /= nf90_noerr) call handle_err(status, "Create file error at "//file_name)
     file_info_list(current_file_num)%nc_file_id = file_id
     create_file = current_file_num
     current_file_num = current_file_num + 1
@@ -128,14 +134,22 @@ contains
     integer, intent(in) :: file_id
     integer :: status, nc_file_id
 
+    if (my_pe /= io_root) then
+         return
+    endif
+
     nc_file_id = file_info_list(file_id)%nc_file_id
     status = nf90_enddef(nc_file_id)
-    if (status /= nf90_noerr) call handle_err(status)
+    if (status /= nf90_noerr) call handle_err(status, "End def error")
   end subroutine enddef_file
 
   subroutine close_file(file_id)
     integer, intent(in) :: file_id
     integer :: status, nc_file_id
+
+    if (my_pe /= io_root) then
+        return
+    endif
 
     nc_file_id = file_info_list(file_id)%nc_file_id
     status = nf90_close(nc_file_id)
@@ -168,6 +182,7 @@ contains
     enddo
     status = nf90_def_var(nc_file_id, trim(var_name), nf90_double, &
                           nc_axis_id_list, nc_var_id)
+    if (status /= nf90_noerr) call handle_err(status,"error in register "//var_name)
 
     var_info_list(current_var_num)%nc_var_id  = nc_var_id
     var_num_dims = size(axis_id_list)
@@ -397,14 +412,14 @@ contains
 
     nc_file_id = file_info_list(file_id)%nc_file_id
     status = nf90_def_dim(nc_file_id, "time_step", nf90_unlimited, time_dimid)
-    if (status /= nf90_noerr) call handle_err(status)
+    if (status /= nf90_noerr) call handle_err(status,"create time axis error")
 
     current_num_dims = file_info_list(file_id)%current_num_dims
     if(current_num_dims > MAX_NUM_DIMS) call axis_dim_exceed_err
     file_info_list(file_id)%axis_id_list(current_num_dims) = time_dimid
     file_info_list(file_id)%output_length_list(current_num_dims) = 1
     create_axis_time = current_num_dims
-    file_info_list(file_id)%axis_id_list(current_num_dims) = current_num_dims + 1
+    file_info_list(file_id)%current_num_dims = current_num_dims + 1
     return
   end function create_axis_time
 
@@ -421,14 +436,14 @@ contains
     nc_file_id = file_info_list(file_id)%nc_file_id
     nkx = 2*kmax + 1
     status = nf90_def_dim(nc_file_id, "kx", nkx, kx_dimid)
-    if (status /= nf90_noerr) call handle_err(status)
+    if (status /= nf90_noerr) call handle_err(status,"create kx error")
 
     current_num_dims = file_info_list(file_id)%current_num_dims
     if(current_num_dims > MAX_NUM_DIMS) call axis_dim_exceed_err
     file_info_list(file_id)%axis_id_list(current_num_dims) = kx_dimid
     file_info_list(file_id)%output_length_list(current_num_dims) = nkx
     create_axis_kx = current_num_dims
-    file_info_list(file_id)%axis_id_list(current_num_dims) = current_num_dims + 1
+    file_info_list(file_id)%current_num_dims = current_num_dims + 1
     return
   end function create_axis_kx
 
@@ -446,14 +461,14 @@ contains
  
     nky = kmax + 1
     status = nf90_def_dim(nc_file_id, "ky", nky, ky_dimid)
-    if (status /= nf90_noerr) call handle_err(status)
+    if (status /= nf90_noerr) call handle_err(status,"create ky error")
 
     current_num_dims = file_info_list(file_id)%current_num_dims
     if(current_num_dims > MAX_NUM_DIMS) call axis_dim_exceed_err
     file_info_list(file_id)%axis_id_list(current_num_dims) = ky_dimid
     file_info_list(file_id)%output_length_list(current_num_dims) = nky
     create_axis_ky = current_num_dims
-    file_info_list(file_id)%axis_id_list(current_num_dims) = current_num_dims + 1
+    file_info_list(file_id)%current_num_dims = current_num_dims + 1
     return
   end function create_axis_ky
 
@@ -470,14 +485,14 @@ contains
     nc_file_id = file_info_list(file_id)%nc_file_id
  
     status = nf90_def_dim(nc_file_id, "z", nz, z_dimid)
-    if (status /= nf90_noerr) call handle_err(status)
+    if (status /= nf90_noerr) call handle_err(status,"create z error")
 
     current_num_dims = file_info_list(file_id)%current_num_dims
     if(current_num_dims > MAX_NUM_DIMS) call axis_dim_exceed_err
     file_info_list(file_id)%axis_id_list(current_num_dims) = z_dimid
     file_info_list(file_id)%output_length_list(current_num_dims) = nz
     create_axis_z = current_num_dims
-    file_info_list(file_id)%axis_id_list(current_num_dims) = current_num_dims + 1
+    file_info_list(file_id)%current_num_dims = current_num_dims + 1
     return
   end function create_axis_z
 
@@ -494,14 +509,14 @@ contains
     nc_file_id = file_info_list(file_id)%nc_file_id
 
     status = nf90_def_dim(nc_file_id, "real_and_imag", 2, real_and_imag_dimid)
-    if (status /= nf90_noerr) call handle_err(status)
+    if (status /= nf90_noerr) call handle_err(status,"create real_and imag error")
 
     current_num_dims = file_info_list(file_id)%current_num_dims
     if(current_num_dims > MAX_NUM_DIMS) call axis_dim_exceed_err
     file_info_list(file_id)%axis_id_list(current_num_dims) = real_and_imag_dimid 
     file_info_list(file_id)%output_length_list(current_num_dims) = 1
     create_axis_real_and_imag = current_num_dims
-    file_info_list(file_id)%axis_id_list(current_num_dims) = current_num_dims + 1
+    file_info_list(file_id)%current_num_dims = current_num_dims + 1
     return
   end function create_axis_real_and_imag
 
@@ -519,14 +534,14 @@ contains
 
     nx = 2*(kmax + 1)
     status = nf90_def_dim(nc_file_id, "lon", nx, lon_dimid)
-    if (status /= nf90_noerr) call handle_err(status)
+    if (status /= nf90_noerr) call handle_err(status,"create lon error")
 
     current_num_dims = file_info_list(file_id)%current_num_dims
     if(current_num_dims > MAX_NUM_DIMS) call axis_dim_exceed_err
     file_info_list(file_id)%axis_id_list(current_num_dims) = lon_dimid 
     file_info_list(file_id)%output_length_list(current_num_dims) = nx
     create_axis_lon = current_num_dims
-    file_info_list(file_id)%axis_id_list(current_num_dims) = current_num_dims + 1
+    file_info_list(file_id)%current_num_dims = current_num_dims + 1
     return
   end function create_axis_lon
 
@@ -544,14 +559,14 @@ contains
 
     ny = 2*(kmax + 1)
     status = nf90_def_dim(nc_file_id, "lat", ny, lat_dimid)
-    if (status /= nf90_noerr) call handle_err(status)
+    if (status /= nf90_noerr) call handle_err(status,"create lat error")
 
     current_num_dims = file_info_list(file_id)%current_num_dims
     if(current_num_dims > MAX_NUM_DIMS) call axis_dim_exceed_err
     file_info_list(file_id)%axis_id_list(current_num_dims) = lat_dimid 
     file_info_list(file_id)%output_length_list(current_num_dims) = ny
     create_axis_lat = current_num_dims
-    file_info_list(file_id)%axis_id_list(current_num_dims) = current_num_dims + 1
+    file_info_list(file_id)%current_num_dims = current_num_dims + 1
     return
   end function create_axis_lat
 

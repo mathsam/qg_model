@@ -7,7 +7,7 @@
 FC = ftn
 CC = cc
 CXX = CC
-LD = ftn
+LD = ftn 
 #########
 # flags #
 #########
@@ -94,18 +94,18 @@ ifeq ($(NETCDF),3)
 endif
 
 ifneq ($(findstring netcdf-4.0.1,$(LOADEDMODULES)),)
-  LIBS += -lnetcdff -lnetcdf -lhdf5_hl -lhdf5 -lz
+  LIBS += -lnetcdff --lhdf5_hl -lhdf5 -lz
 else
-  LIBS += -lnetcdf
+  LIBS += -lnetcdff
 endif
 
-LIBS += 
+LIBS += -L$(NETCDF_DIR)
 LDFLAGS += $(LIBS)
 
 # xic: customized FFLAGS and LDFLAGS
 #FFLAGS +=  -O3 -r8 -i4 -assume byterecl -xT -ipo -nowarn
 #FFLAGS +=  -O3 -r8 -i4 -assume byterecl -xT -ipo -nowarn
-LDFLAGS +=  -L/lustre/f1/unswept/Junyi.Chai/lib/fftw2.1.5/lib -lfftw_mpi -lfftw 
+LDFLAGS +=  -L/lustre/f1/unswept/Junyi.Chai/lib/fftw2.1.5/lib -lfftw_mpi -lfftw -L$(NETCDF_DIR)/lib
 
 
 #---------------------------------------------------------------------------

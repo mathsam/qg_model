@@ -12,7 +12,8 @@ program qg_driver
   use qg_tracers,             only: init_tracers, step_tracers
   use qg_topo,                only: init_topo
   use qg_init_streamfunction, only: init_streamfunction
-  use qg_output,              only: init_counters, write_restarts, write_snapshots
+  use qg_output,              only: init_counters, write_restarts, write_snapshots, &
+                                    end_write_snapshots
   use qg_diagnostics,         only: get_energetics, get_spectra, enstrophy, get_corrs
   use qg_filter_tools,        only: init_filter
   use rmf_forcing,            only: init_rmf_forcing, markovian
@@ -92,6 +93,7 @@ program qg_driver
   enddo  ! End of main time loop
 
   call Message('Calculation done')
+  call end_write_snapshots()
   call End_par
   
 !*********************************************************************

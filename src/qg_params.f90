@@ -364,7 +364,6 @@ contains
     ! Send info to io_tools 
 
     call Pass_params(datadir,recunit,processor_id,io_root) 
-    call pass_params_nc_io(processor_id,io_root)
 
     call Message('')
     call Message('SQG model version: '//trim(version))
@@ -395,6 +394,8 @@ contains
 
     ! Make sure random num gen is set to start right
     idum = -abs(idum)
+
+    call pass_params_nc_io(processor_id,io_root,kmax,nz)
 
   end subroutine Init_parameters
 

@@ -11,9 +11,11 @@ module qg_output
 
   implicit none
   private
+  integer :: history_file_id
+  integer :: psi_var_id, tracer_var_id, time_var_id
   save
 
-  public :: init_counters, write_restarts, write_snapshots
+  public :: init_counters, write_restarts, write_snapshots, end_write_snapshots
 
 contains
 
@@ -30,6 +32,11 @@ contains
                          start_frame, frame, d1frame, d2frame, rewindfrm,  & 
                          write_step, diag1_step, diag2_step,               &
                          do_spectra, restarting, restart_step, psi_file
+    use nc_io_tools, only : create_file, enddef_file, register_variable,     &
+                            create_axis_time, create_axis_kx, create_axis_ky,&
+                            create_axis_z, create_axis_real_and_imag
+
+    integer :: axis_kx_id, axis_ky_id, axis_z_id, axis_time_id, axis_compl_id
 
     restart: if (restarting) then
 
@@ -101,6 +108,21 @@ contains
 
     call Message('Counters initialized')
 
+    history_file_id = create_file("history.nc")
+    axis_time_id    = create_axis_time(history_file_id)
+    axis_kx_id      = create_axis_kx(history_file_id)
+    axis_ky_id      = create_axis_ky(history_file_id)
+    axis_z_id       = create_axis_z(history_file_id)
+    axis_compl_id   = create_axis_real_and_imag(history_file_id)
+
+    psi_var_id  = register_variable(history_file_id, "psi",  &
+        (/axis_z_id, axis_kx_id, axis_ky_id, axis_compl_id, axis_time_id/), .true.)
+    time_var_id = register_variable(history_file_id, "time", &
+        (/axis_time_id/), .false.)
+    call enddef_file(history_file_id)
+
+    call Message("history.nc initialized")
+
   end subroutine Init_counters
    
   !*********************************************************************
@@ -119,6 +141,7 @@ contains
     use qg_arrays,   only: psi
     use qg_tracers,  only: tracer_x, tracer_y
     use par_tools,   only: par_gather, processor_id, par_sync
+    use nc_io_tools, only: write_nc
 
     integer,intent(in)                    :: framein
     integer                               :: frameout
@@ -130,6 +153,7 @@ contains
     psi_global=0.
     call par_gather(psi,psi_global,io_root)
     call Write_field(psi_global(:,-kmax:kmax,:),psi_file,frame=frameout,zfirst=1)
+    call write_nc(psi_var_id, psi_global(:,-kmax:kmax,:))
     deallocate(psi_global)
    
     if (use_tracer_x.or.use_tracer_y) then
@@ -149,9 +173,16 @@ contains
    endif
 
    call Write_field(time,write_time_file,frameout)  
+   call write_nc(time_var_id, time)
    call Message('Wrote snapshots, frame: ',tag=frameout)
 
   end function Write_snapshots
+
+  subroutine end_write_snapshots()
+    use nc_io_tools, only: close_file
+
+    call close_file(history_file_id)
+  end subroutine end_write_snapshots
 
   !*********************************************************************
 

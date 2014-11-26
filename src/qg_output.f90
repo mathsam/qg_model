@@ -12,7 +12,7 @@ module qg_output
   implicit none
   private
   integer :: history_file_id
-  integer :: psi_var_id, tracer_var_id, time_var_id
+  integer :: psi_var_id, tracerx_var_id, tracery_var_id, time_var_id
   save
 
   public :: init_counters, write_restarts, write_snapshots, end_write_snapshots
@@ -31,7 +31,8 @@ contains
     use qg_params, only: ci, cr, parameters_ok, cntr, cnt, total_counts,   &
                          start_frame, frame, d1frame, d2frame, rewindfrm,  & 
                          write_step, diag1_step, diag2_step,               &
-                         do_spectra, restarting, restart_step, psi_file
+                         do_spectra, restarting, restart_step, psi_file,   &
+                         use_tracer_x, use_tracer_y
     use nc_io_tools, only : create_file, enddef_file, register_variable,     &
                             create_axis_time, create_axis_kx, create_axis_ky,&
                             create_axis_z, create_axis_real_and_imag
@@ -117,8 +118,18 @@ contains
 
     psi_var_id  = register_variable(history_file_id, "psi",  &
         (/axis_z_id, axis_kx_id, axis_ky_id, axis_compl_id, axis_time_id/), .true.)
+
+    if (use_tracer_x) tracerx_var_id = &
+                  register_variable(history_file_id, "tracer_x",  &
+        (/axis_z_id, axis_kx_id, axis_ky_id, axis_compl_id, axis_time_id/), .true.)
+
+    if (use_tracer_y) tracery_var_id = &
+                  register_variable(history_file_id, "tracer_y",  &
+        (/axis_z_id, axis_kx_id, axis_ky_id, axis_compl_id, axis_time_id/), .true.)
+
     time_var_id = register_variable(history_file_id, "time", &
         (/axis_time_id/), .false.)
+
     call enddef_file(history_file_id)
 
     call Message("history.nc initialized")
@@ -163,11 +174,13 @@ contains
           call par_gather(tracer_x,tracer_global,io_root)
           call Write_field(tracer_global(:,-kmax:kmax,:),tracer_x_file, &
                            frame=frameout,zfirst=1) 
+          call write_nc(tracerx_var_id, tracer_global(:,-kmax:kmax,:))
        endif
        if (use_tracer_y) then
           call par_gather(tracer_y,tracer_global,io_root)
           call Write_field(tracer_global(:,-kmax:kmax,:),tracer_y_file, &
                            frame=frameout,zfirst=1) 
+          call write_nc(tracery_var_id, tracer_global(:,-kmax:kmax,:))
        endif
        deallocate(tracer_global)
    endif

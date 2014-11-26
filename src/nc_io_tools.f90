@@ -40,6 +40,15 @@ module nc_io_tools
   !   call write_nc(var_psi_id, psi_global)
   !   
   !   call close_file(file_id)
+  !
+  ! Algorithm:
+  !  Use file_info_list to keep track of all the NetCDF files that has been
+  !  opened. current_file_num is initially set to 1, and is increased by 1
+  !  each time a new file is opened. current_file_num -1 is the total number 
+  !  of files that has been opened. 
+  !  Use var_info_list to keep track of all variable information in a
+  !  similar way.
+  !  nc_file_id is returned by nf90_create.
   !*************************************************************************
 
   use netcdf
@@ -78,7 +87,8 @@ module nc_io_tools
   integer :: kmax, nz ! same as that in qg_params
   save
 
-  public :: pass_params_nc_io, create_file, enddef_file, close_file, &
+  public :: pass_params_nc_io, create_file, enddef_file,             &
+            close_all_files,                                         &
             register_variable, write_nc,                             &
             create_axis_time, create_axis_kx, create_axis_ky,        &
             create_axis_z, create_axis_real_and_imag,                &
@@ -160,18 +170,31 @@ contains
     if (status /= nf90_noerr) call handle_err(status, "End def error")
   end subroutine enddef_file
 
-  subroutine close_file(file_id)
-    integer, intent(in) :: file_id
+  subroutine close_all_files()
+    integer :: i
     integer :: status, nc_file_id
 
     if (my_pe /= io_root) then
         return
     endif
 
-    nc_file_id = file_info_list(file_id)%nc_file_id
-    status = nf90_close(nc_file_id)
-    if (status /= nf90_noerr) call handle_err(status)
-  end subroutine close_file
+    do i = 1, current_file_num - 1
+        nc_file_id = file_info_list(i)%nc_file_id
+        status = nf90_close(nc_file_id)
+        if (status /= nf90_noerr) call handle_err(status)
+    enddo
+
+    do i = 1, current_var_num - 1
+        deallocate(var_info_list(i)%var_start_real)
+        deallocate(var_info_list(i)%var_start_imag)
+        deallocate(var_info_list(i)%var_count)
+    enddo
+
+    !after these operations, file_info_list and var_info_list can
+    !be used to keep track of files/vars again
+    current_file_num = 1
+    current_var_num  = 1
+  end subroutine close_all_files
 
   integer function register_variable(file_id_in,var_name,axis_id_list,is_complex)
     integer, intent(in)               :: file_id_in

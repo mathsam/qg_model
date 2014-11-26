@@ -12,8 +12,7 @@ program qg_driver
   use qg_tracers,             only: init_tracers, step_tracers
   use qg_topo,                only: init_topo
   use qg_init_streamfunction, only: init_streamfunction
-  use qg_output,              only: init_counters, write_restarts, write_snapshots, &
-                                    end_write_snapshots
+  use qg_output,              only: init_counters, write_restarts, write_snapshots
   use qg_diagnostics,         only: get_energetics, get_spectra, enstrophy, get_corrs
   use qg_filter_tools,        only: init_filter
   use rmf_forcing,            only: init_rmf_forcing, markovian
@@ -22,6 +21,7 @@ program qg_driver
   use io_tools,               only: Message, read_field
   use par_tools,              only: init_par, end_par, par_sync, processor_id
   use op_rules,               only: operator(+), operator(-), operator(*)
+  use nc_io_tools,            only: close_all_files
 
   implicit none
 
@@ -90,7 +90,7 @@ program qg_driver
 
   call Message('Calculation done')
   restart_frame = Write_restarts(restart_frame)
-  call end_write_snapshots()
+  call close_all_files()  ! close all the NetCDF files
   call End_par
   
 !*********************************************************************

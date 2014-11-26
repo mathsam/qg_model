@@ -17,7 +17,7 @@ module qg_output
              restart_tracery_var_id, restart_force_var_id
   save
 
-  public :: init_counters, write_restarts, write_snapshots, end_write_snapshots
+  public :: init_counters, write_restarts, write_snapshots
 
 contains
 
@@ -192,12 +192,6 @@ contains
    call Message('Wrote snapshots, frame: ',tag=frameout)
 
   end function Write_snapshots
-
-  subroutine end_write_snapshots()
-    use nc_io_tools, only: close_file
-
-    call close_file(history_file_id)
-  end subroutine end_write_snapshots
 
   !*********************************************************************
 

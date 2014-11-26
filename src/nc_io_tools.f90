@@ -1,14 +1,27 @@
 module nc_io_tools
 
   !*************************************************************************
-  ! Output model results in NetCDF format
+  ! Output model results/Read restart files in NetCDF format
   ! Intents to store most information inside this module
+  !
+  ! Intents for serial I/O, therefore, only root node can do I/O. And I/O
+  ! should be done for global domain!
   ! 
+  ! Avialable dimensions are
+  !   kx, ky, z, time, real_and_imag, lon, lat
+  ! The last dimension must be time. And if variable is complex, the second
+  ! to last dimension must be real_and_imag
+  ! In the example below, psi in the model takes 5 dimensions to output
+  ! For another example, total energy in qg_diagnostics takes 2 dimensions
+  !
   ! Sample usage:
   ! need to store file_id and var_id in the calling modules
   ! in this paralleled version, fields are stored differently compared with
   ! the serial version
-  ! for example, psi(1:nz, kx_start:kx_end, 0:kmax)
+  ! for example, psi(1:nz, kx_start:kx_end, 0:kmax) in this version
+  !
+  ! Note that this paralleled version cannot do surface qg. And psi in
+  ! calculation is always 3 dimensional array in the code
   !
   !   integer :: file_id, var_psi_id
   !   integer :: axis_kx_id, axis_ky_id, axis_z_id, axis_time_id, axis_compl_id
@@ -76,6 +89,10 @@ module nc_io_tools
                      write_nc_1d, write_nc_1d_complex, &
                      write_nc_2d, write_nc_2d_complex, &
                      write_nc_3d, write_nc_3d_complex
+  end interface
+
+  interface read_nc
+    module procedure read_nc_0d, read_nc_3d_complex
   end interface
 
 contains
@@ -570,5 +587,50 @@ contains
     return
   end function create_axis_lat
 
+  subroutine read_nc_0d(filename, varname, var_out)
+    character(*), intent(in) :: filename, varname
+    real, intent(inout)      :: var_out
+    integer                  :: status, file_id, var_id
+
+    if (my_pe /= io_root) then
+        return
+    endif
+
+    status = nf90_open(path = trim(filename), mode = nf90_nowrite, ncid = file_id)
+    if (status /= nf90_noerr) call handle_err(status,"read file"//filename//" error")
+
+    status = nf90_inq_varid(file_id, varname, var_id)
+    if (status /= nf90_noerr) call handle_err(status,"inquire variable " & 
+                                          //varname//" in file "//filename//" error")
+
+    status = nf90_get_var(file_id, var_id, var_out)
+    if (status /= nf90_noerr) call handle_err(status,"read variable " & 
+                                         //varname//" in file "//filename//" error")
+  end subroutine read_nc_0d
+
+  subroutine read_nc_3d_complex(filename, varname, var_out)
+    character(*), intent(in)                  :: filename, varname
+    complex, dimension(:,:,:), intent(inout)  :: var_out
+    integer                                   :: status, file_id, var_id
+    real, dimension(size(var_out,1), size(var_out,2), size(var_out,3),2) &
+                                              :: field_real_and_imag
+
+    if (my_pe /= io_root) then
+        return
+    endif
+
+    status = nf90_open(path = trim(filename), mode = nf90_nowrite, ncid = file_id)
+    if (status /= nf90_noerr) call handle_err(status,"read file"//filename//" error")
+
+    status = nf90_inq_varid(file_id, varname, var_id)
+    if (status /= nf90_noerr) call handle_err(status,"inquire variable " &
+                                          //varname//" in file "//filename//" error")
+
+    status = nf90_get_var(file_id, var_id, field_real_and_imag)
+    if (status /= nf90_noerr) call handle_err(status,"read variable " &
+                                         //varname//" in file "//filename//" error")
+
+    var_out = field_real_and_imag(:,:,:,1) + (0.0, 1.0)*field_real_and_imag(:,:,:,2)
+  end subroutine read_nc_3d_complex
 
 end module nc_io_tools

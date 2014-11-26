@@ -50,6 +50,7 @@ module qg_params                   !-*-f90-*-
   character(8)            :: end_date        = ''      ! End date of sim
   character(10)           :: end_time        = ''      ! End time of sim
   logical                 :: restarting  = .false.     ! Is this a restart?
+  logical                 :: do_energetics   = .false.
 
   ! Scale parameters
 
@@ -311,6 +312,9 @@ module qg_params                   !-*-f90-*-
   namelist/run_params/rmf_norm_min
   namelist/run_params/drt,drb,rho_slope,hf
   namelist/run_params/dealiasing,dealiasing_t
+
+  ! switchs: if do energetics
+  namelist/run_params/do_energetics
 
   ! End of Namelist definition
 

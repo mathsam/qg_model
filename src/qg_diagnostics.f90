@@ -143,10 +143,11 @@ contains
                            time,cntr,uscale,vscale,use_forcing,                     &
                            use_tracer_x,use_tracer_y,                        &
                            quad_drag,surface_bc,filter_type,filter_type_t,   &
-                           time_varying_mean,use_mean_grad_t
+                           time_varying_mean,use_mean_grad_t, do_energetics
     use qg_filter_tools, only: get_filter_rate
     use par_tools,    only: par_sum
     use, intrinsic :: ieee_arithmetic
+
 
     integer,intent(in) :: framein
     integer            :: dframe
@@ -161,6 +162,8 @@ contains
     logical,save       :: called_yet=.false.
 
     dframe = framein + 1            ! Update diagnostics frame counter
+    if( .NOT. do_energetics) return
+
     call Write_field(time,'diag1_time',dframe) 
                                      ! Track diagnostic-writes
     

@@ -60,7 +60,7 @@ program qg_driver
 
      ! Calculate diagnostics, write output
      if (mod(cntr,diag1_step)==0.or.start) then
-        d1frame = Get_energetics(d1frame)
+        if (do_energetics) d1frame = Get_energetics(d1frame)
      endif
      if (do_spectra.and.(mod(cntr,diag2_step)==0.or.start)) then
         d2frame = Get_spectra(d2frame)

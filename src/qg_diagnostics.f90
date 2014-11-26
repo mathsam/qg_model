@@ -162,7 +162,6 @@ contains
     logical,save       :: called_yet=.false.
 
     dframe = framein + 1            ! Update diagnostics frame counter
-    if( .NOT. do_energetics) return
 
     call Write_field(time,'diag1_time',dframe) 
                                      ! Track diagnostic-writes

@@ -48,7 +48,8 @@ contains
                                psi_init_file, psi_restart_file, psi_file,      &
                                frame, start_frame, rewindfrm,                  &
                                parameters_ok, cr, ci, io_root,                 &
-                               initialize_energy, psi_init_type, restarting
+                               initialize_energy, psi_init_type, restarting,   &
+                               nc_restartfile
     use qg_arrays,       only: ksqd_, kx_, ky_, psi
     use qg_strat_and_shear, only: kz, vmode
     use qg_diagnostics,  only: energy
@@ -56,6 +57,7 @@ contains
     use transform_tools, only: Grid2spec
     use strat_tools,     only: Layer2mode, Mode2layer
     use par_tools,       only: par_scatter, par_sync, processor_id
+    use nc_io_tools,     only: read_nc
 
     real,dimension(:,:),allocatable            :: espec,mu
     real,dimension(:,:,:),allocatable          :: zetag
@@ -71,9 +73,11 @@ contains
 
        allocate(psi_global(1:nz,-kmax-1:kmax,0:kmax)); psi_global=0.
        if (.not.rewindfrm) then
-          call Read_field(psi_global(:,-kmax:kmax,:),psi_restart_file,zfirst=1)
+!          call Read_field(psi_global(:,-kmax:kmax,:),psi_restart_file,zfirst=1)
+          call read_nc("./INPUT/"//trim(nc_restartfile),"psi", psi_global(:,-kmax:kmax,:))
        else
-          call Read_field(psi_global(:,-kmax:kmax,:),psi_file,start_frame,zfirst=1)
+!          call Read_field(psi_global(:,-kmax:kmax,:),psi_file,start_frame,zfirst=1)
+          call read_nc("./INPUT/"//trim(nc_restartfile),"psi", psi_global(:,-kmax:kmax,:))
        endif
        call par_scatter(psi_global,psi,io_root)
        deallocate(psi_global)

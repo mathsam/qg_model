@@ -165,7 +165,7 @@ contains
     allocate(psi_global(1:nz,-kmax-1:kmax,0:kmax))
     psi_global=0.
     call par_gather(psi,psi_global,io_root)
-    call Write_field(psi_global(:,-kmax:kmax,:),psi_file,frame=frameout,zfirst=1)
+!    call Write_field(psi_global(:,-kmax:kmax,:),psi_file,frame=frameout,zfirst=1)
     call write_nc(psi_var_id, psi_global(:,-kmax:kmax,:))
     deallocate(psi_global)
    
@@ -174,20 +174,20 @@ contains
        tracer_global = 0.
        if (use_tracer_x) then
           call par_gather(tracer_x,tracer_global,io_root)
-          call Write_field(tracer_global(:,-kmax:kmax,:),tracer_x_file, &
-                           frame=frameout,zfirst=1) 
+!          call Write_field(tracer_global(:,-kmax:kmax,:),tracer_x_file, &
+!                           frame=frameout,zfirst=1) 
           call write_nc(tracerx_var_id, tracer_global(:,-kmax:kmax,:))
        endif
        if (use_tracer_y) then
           call par_gather(tracer_y,tracer_global,io_root)
-          call Write_field(tracer_global(:,-kmax:kmax,:),tracer_y_file, &
-                           frame=frameout,zfirst=1) 
+!          call Write_field(tracer_global(:,-kmax:kmax,:),tracer_y_file, &
+!                           frame=frameout,zfirst=1) 
           call write_nc(tracery_var_id, tracer_global(:,-kmax:kmax,:))
        endif
        deallocate(tracer_global)
    endif
 
-   call Write_field(time,write_time_file,frameout)  
+!   call Write_field(time,write_time_file,frameout)  
    call write_nc(time_var_id, time)
    call Message('Wrote snapshots, frame: ',tag=frameout)
 
@@ -268,7 +268,7 @@ contains
     allocate(psi_global(1:nz,-kmax-1:kmax,0:kmax))
     psi_global=0.
     call par_gather(psi,psi_global,io_root)
-    call Write_field(psi_global(:,-kmax:kmax,:),psi_restart_file,zfirst=1)
+!    call Write_field(psi_global(:,-kmax:kmax,:),psi_restart_file,zfirst=1)
     call write_nc(restart_psi_var_id, psi_global(:,-kmax:kmax,:)) 
     
     deallocate(psi_global)
@@ -278,12 +278,12 @@ contains
        tracer_global = 0.
        if (use_tracer_x) then
           call par_gather(tracer_x,tracer_global,io_root)
-          call Write_field(tracer_global(:,-kmax:kmax,:),tracer_x_restart_file,zfirst=1)
+!          call Write_field(tracer_global(:,-kmax:kmax,:),tracer_x_restart_file,zfirst=1)
           call write_nc(restart_tracerx_var_id, tracer_global(:,-kmax:kmax,:))
        endif
        if (use_tracer_y) then
           call par_gather(tracer_y,tracer_global,io_root)
-          call Write_field(tracer_global(:,-kmax:kmax,:),tracer_y_restart_file,zfirst=1)
+!          call Write_field(tracer_global(:,-kmax:kmax,:),tracer_y_restart_file,zfirst=1)
           call write_nc(restart_tracery_var_id, tracer_global(:,-kmax:kmax,:))
        endif
        deallocate(tracer_global)
@@ -293,7 +293,7 @@ contains
        allocate(force_o_global(-kmax-1:kmax,0:kmax))
        force_o_global = 0.
        call par_gather(force_o,force_o_global,io_root)
-       call Write_field(force_o_global,force_o_file)
+!       call Write_field(force_o_global,force_o_file)
        call write_nc(restart_force_var_id, force_o_global(-kmax:kmax,:))
        deallocate(force_o_global)
     endif

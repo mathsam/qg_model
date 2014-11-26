@@ -33,8 +33,10 @@ contains
     use qg_params, only: kmax, kx_start, kx_end, nkx, nky,       &
                          parameters_ok,cr,ci,datadir,io_root,    &
                          forc_coef, forc_corr, kf_min, kf_max,   &
-                         z_force, norm_forcing, force_o_file
+                         z_force, norm_forcing, force_o_file,    &
+                         nc_restartfile
     use par_tools, only: par_scatter, par_sync
+    use nc_io_tools, only: read_nc
 
     complex,dimension(:,:),allocatable      :: force_global
     logical                                 :: file_exists
@@ -78,12 +80,15 @@ contains
     endif
 
     force_o = 0.
-    inquire(file=trim(datadir)//trim(force_o_file)//'.bin',exist=file_exists)
+    inquire(file="./INPUT/"//trim(nc_restartfile), exist=file_exists)
     if (file_exists) then
        call Message('Found force_o file -- reading in')
        allocate(force_global(-kmax-1:kmax,0:kmax))
        force_global = 0.
-       call Read_field(force_global(-kmax:kmax,:),force_o_file)
+!       call Read_field(force_global(-kmax:kmax,:),force_o_file)
+       call read_nc("./INPUT/"//trim(nc_restartfile), "forcing", &
+                    force_global(-kmax:kmax,:))
+       call Message("Read in forcing restart")
        call par_scatter(force_global,force_o,io_root)
        deallocate(force_global)
     endif

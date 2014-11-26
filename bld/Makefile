@@ -33,7 +33,7 @@ qg_driver.o: $(SRCROOT)qg_driver.f90 qg_arrays.o qg_params.o qg_strat_and_shear.
 	$(FC) $(FFLAGS) $(OTHERFLAGS) $(OTHER_FFLAGS) -c	$(SRCROOT)qg_driver.f90
 qg_filter_tools.o: $(SRCROOT)qg_filter_tools.f90 io_tools.o qg_params.o qg_arrays.o par_tools.o op_rules.o
 	$(FC) $(FFLAGS) $(OTHERFLAGS) $(OTHER_FFLAGS) -c	$(SRCROOT)qg_filter_tools.f90
-qg_init_streamfunction.o: $(SRCROOT)qg_init_streamfunction.f90 op_rules.o io_tools.o qg_params.o qg_arrays.o qg_strat_and_shear.o qg_diagnostics.o numerics_lib.o transform_tools.o strat_tools.o par_tools.o
+qg_init_streamfunction.o: $(SRCROOT)qg_init_streamfunction.f90 op_rules.o io_tools.o qg_params.o qg_arrays.o qg_strat_and_shear.o qg_diagnostics.o numerics_lib.o transform_tools.o strat_tools.o par_tools.o nc_io_tools.o
 	$(FC) $(FFLAGS) $(OTHERFLAGS) $(OTHER_FFLAGS) -c	$(SRCROOT)qg_init_streamfunction.f90
 qg_output.o: $(SRCROOT)qg_output.f90 io_tools.o qg_params.o qg_arrays.o qg_tracers.o par_tools.o rmf_forcing.o nc_io_tools.o
 	$(FC) $(FFLAGS) $(OTHERFLAGS) $(OTHER_FFLAGS) -c	$(SRCROOT)qg_output.f90
@@ -45,9 +45,9 @@ qg_strat_and_shear.o: $(SRCROOT)qg_strat_and_shear.f90 io_tools.o qg_arrays.o qg
 	$(FC) $(FFLAGS) $(OTHERFLAGS) $(OTHER_FFLAGS) -c	$(SRCROOT)qg_strat_and_shear.f90
 qg_topo.o: $(SRCROOT)qg_topo.f90 io_tools.o qg_params.o qg_strat_and_shear.o qg_arrays.o transform_tools.o numerics_lib.o par_tools.o
 	$(FC) $(FFLAGS) $(OTHERFLAGS) $(OTHER_FFLAGS) -c	$(SRCROOT)qg_topo.f90
-qg_tracers.o: $(SRCROOT)qg_tracers.f90 op_rules.o io_tools.o qg_filter_tools.o qg_strat_and_shear.o qg_params.o par_tools.o qg_arrays.o transform_tools.o strat_tools.o numerics_lib.o
+qg_tracers.o: $(SRCROOT)qg_tracers.f90 op_rules.o io_tools.o qg_filter_tools.o qg_strat_and_shear.o qg_params.o par_tools.o qg_arrays.o transform_tools.o strat_tools.o numerics_lib.o nc_io_tools.o
 	$(FC) $(FFLAGS) $(OTHERFLAGS) $(OTHER_FFLAGS) -c	$(SRCROOT)qg_tracers.f90
-rmf_forcing.o: $(SRCROOT)rmf_forcing.f90 io_tools.o qg_params.o par_tools.o op_rules.o qg_arrays.o qg_filter_tools.o numerics_lib.o
+rmf_forcing.o: $(SRCROOT)rmf_forcing.f90 io_tools.o qg_params.o par_tools.o op_rules.o qg_arrays.o qg_filter_tools.o numerics_lib.o nc_io_tools.o
 	$(FC) $(FFLAGS) $(OTHERFLAGS) $(OTHER_FFLAGS) -c	$(SRCROOT)rmf_forcing.f90
 strat_tools.o: $(SRCROOT)strat_tools.f90 io_tools.o numerics_lib.o eig_pak.o
 	$(FC) $(FFLAGS) $(OTHERFLAGS) $(OTHER_FFLAGS) -c	$(SRCROOT)strat_tools.f90

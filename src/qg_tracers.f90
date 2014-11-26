@@ -89,7 +89,7 @@ contains
        allocate(tracer_x_o(1:nzt,kx_start:kx_end,0:kmax));    tracer_x_o = 0.
        allocate(rhs_tx    (1:nzt,kx_start:kx_end,0:kmax));    rhs_tx = 0.
        tracer_x = filter_t*  &
-            make_tracer(tracer_x_file,tracer_x_init_file,tracer_x_restart_file)
+            make_tracer(tracer_x_file,tracer_x_init_file,"tracer_x")
        call Message('Tracer_x fields allocated')
     endif
 
@@ -98,7 +98,7 @@ contains
        allocate(tracer_y_o(1:nzt,kx_start:kx_end,0:kmax));     tracer_y_o = 0.
        allocate(rhs_ty    (1:nzt,kx_start:kx_end,0:kmax));     rhs_ty = 0.
        tracer_y = filter_t*  &
-            make_tracer(tracer_y_file,tracer_y_init_file,tracer_y_restart_file)
+            make_tracer(tracer_y_file,tracer_y_init_file,"tracer_y")
        call Message('Tracer_y fields allocated')
     endif
 
@@ -187,13 +187,15 @@ contains
     use qg_params,       only: kx_start, kx_end, kmax, ngrid, nkx, nky, nzt, nz, &
                                parameters_ok, cr, ci, io_root,                   &
                                frame, start_frame, start_frame_t, rewindfrm,     &
-                               tracer_init_type, restarting
+                               tracer_init_type, restarting,                     &
+                               nc_restartfile
     use qg_arrays,       only: ksqd_
     use qg_strat_and_shear, only: dz, vmode
     use transform_tools, only: Grid2spec
     use strat_tools,     only: Layer2mode, Mode2layer
     use numerics_lib,    only: ran
     use par_tools,       only: par_scatter, par_sync
+    use nc_io_tools,     only: read_nc
 
     complex,dimension(1:nzt,1:nkx,0:kmax)        :: tracer
     character(*), intent(in)                     :: tracer_file
@@ -206,10 +208,14 @@ contains
 
        allocate(tracer_global(1:nzt,-kmax-1:kmax,0:kmax)); tracer_global=0.
        if (.not.rewindfrm) then
-          call Read_field(tracer_global(:,-kmax:kmax,:),tracer_restart_file,zfirst=1)
+!          call Read_field(tracer_global(:,-kmax:kmax,:),tracer_restart_file,zfirst=1)
+          call read_nc("./INPUT/"//trim(nc_restartfile), tracer_restart_file, &
+                       tracer_global(:,-kmax:kmax,:)) 
        else
-          call Read_field(tracer_global(:,-kmax:kmax,:),tracer_file, &
-               frame=start_frame_t,zfirst=1)
+!          call Read_field(tracer_global(:,-kmax:kmax,:),tracer_file, &
+!               frame=start_frame_t,zfirst=1)
+          call read_nc("./INPUT/"//trim(nc_restartfile), tracer_restart_file, &
+                       tracer_global(:,-kmax:kmax,:))
        endif
        call par_scatter(tracer_global,tracer,io_root)
        deallocate(tracer_global)

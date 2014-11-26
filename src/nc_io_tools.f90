@@ -93,7 +93,7 @@ module nc_io_tools
             register_variable, write_nc,                             &
             create_axis_time, create_axis_kx, create_axis_ky,        &
             create_axis_z, create_axis_real_and_imag,                &
-            create_axis_lon, create_axis_lat
+            create_axis_lon, create_axis_lat, read_nc
 
   interface write_nc
     module procedure write_nc_0d, write_nc_0d_complex, &
@@ -103,7 +103,7 @@ module nc_io_tools
   end interface
 
   interface read_nc
-    module procedure read_nc_0d, read_nc_3d_complex
+    module procedure read_nc_0d, read_nc_2d_complex, read_nc_3d_complex
   end interface
 
 contains
@@ -632,11 +632,11 @@ contains
                                          //varname//" in file "//filename//" error")
   end subroutine read_nc_0d
 
-  subroutine read_nc_3d_complex(filename, varname, var_out)
+  subroutine read_nc_2d_complex(filename, varname, var_out)
     character(*), intent(in)                  :: filename, varname
-    complex, dimension(:,:,:), intent(inout)  :: var_out
+    complex, dimension(:,:), intent(inout)  :: var_out
     integer                                   :: status, file_id, var_id
-    real, dimension(size(var_out,1), size(var_out,2), size(var_out,3),2) &
+    real, dimension(size(var_out,1), size(var_out,2), 2, 1) &
                                               :: field_real_and_imag
 
     if (my_pe /= io_root) then
@@ -654,7 +654,33 @@ contains
     if (status /= nf90_noerr) call handle_err(status,"read variable " &
                                          //varname//" in file "//filename//" error")
 
-    var_out = field_real_and_imag(:,:,:,1) + (0.0, 1.0)*field_real_and_imag(:,:,:,2)
+    var_out = field_real_and_imag(:,:,1,1) + (0.0, 1.0)*field_real_and_imag(:,:,2,1)
+  end subroutine read_nc_2d_complex
+
+  ! assume the restart file only has only 1 time frame
+  subroutine read_nc_3d_complex(filename, varname, var_out)
+    character(*), intent(in)                  :: filename, varname
+    complex, dimension(:,:,:), intent(inout)  :: var_out
+    integer                                   :: status, file_id, var_id
+    real, dimension(size(var_out,1), size(var_out,2), size(var_out,3),2,1) &
+                                              :: field_real_and_imag
+
+    if (my_pe /= io_root) then
+        return
+    endif
+
+    status = nf90_open(path = trim(filename), mode = nf90_nowrite, ncid = file_id)
+    if (status /= nf90_noerr) call handle_err(status,"read file"//filename//" error")
+
+    status = nf90_inq_varid(file_id, varname, var_id)
+    if (status /= nf90_noerr) call handle_err(status,"inquire variable " &
+                                          //varname//" in file "//filename//" error")
+
+    status = nf90_get_var(file_id, var_id, field_real_and_imag)
+    if (status /= nf90_noerr) call handle_err(status,"read variable " &
+                                         //varname//" in file "//filename//" error")
+
+    var_out = field_real_and_imag(:,:,:,1,1) + (0.0, 1.0)*field_real_and_imag(:,:,:,2,1)
   end subroutine read_nc_3d_complex
 
 end module nc_io_tools

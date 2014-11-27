@@ -40,11 +40,8 @@ contains
                                   uscale, vscale,                     &
                                   kappa_v,                            &
                                   use_tracer_x, use_tracer_y,         &
-                                  tracer_x_file, tracer_y_file,       &
                                   tracer_x_init_file,                 & 
                                   tracer_y_init_file,                 &
-                                  tracer_x_restart_file,              &
-                                  tracer_y_restart_file,              &
                                   filter_type_t, filter_exp_t,        &
                                   filt_tune_t, dealiasing_t,          &
                                   k_cut_t,                            &
@@ -89,7 +86,7 @@ contains
        allocate(tracer_x_o(1:nzt,kx_start:kx_end,0:kmax));    tracer_x_o = 0.
        allocate(rhs_tx    (1:nzt,kx_start:kx_end,0:kmax));    rhs_tx = 0.
        tracer_x = filter_t*  &
-            make_tracer(tracer_x_file,tracer_x_init_file,"tracer_x")
+            make_tracer('',tracer_x_init_file,"tracer_x")
        call Message('Tracer_x fields allocated')
     endif
 
@@ -98,7 +95,7 @@ contains
        allocate(tracer_y_o(1:nzt,kx_start:kx_end,0:kmax));     tracer_y_o = 0.
        allocate(rhs_ty    (1:nzt,kx_start:kx_end,0:kmax));     rhs_ty = 0.
        tracer_y = filter_t*  &
-            make_tracer(tracer_y_file,tracer_y_init_file,"tracer_y")
+            make_tracer('',tracer_y_init_file,"tracer_y")
        call Message('Tracer_y fields allocated')
     endif
 
@@ -165,7 +162,7 @@ contains
 
   !************************************************************************
 
-  function make_tracer(tracer_file, tracer_init_file,tracer_restart_file) &
+  function make_tracer(tracer_file, tracer_init_file,tracer_name) &
        result(tracer)
 
     !************************************************************************
@@ -200,7 +197,7 @@ contains
     complex,dimension(1:nzt,1:nkx,0:kmax)        :: tracer
     character(*), intent(in)                     :: tracer_file
     character(*), intent(in)                     :: tracer_init_file
-    character(*), intent(in)                     :: tracer_restart_file
+    character(*), intent(in)                     :: tracer_name
     complex,dimension(:,:,:),allocatable         :: tracer_global
     real                                         :: tv
 
@@ -208,13 +205,10 @@ contains
 
        allocate(tracer_global(1:nzt,-kmax-1:kmax,0:kmax)); tracer_global=0.
        if (.not.rewindfrm) then
-!          call Read_field(tracer_global(:,-kmax:kmax,:),tracer_restart_file,zfirst=1)
-          call read_nc("./INPUT/"//trim(nc_restartfile), tracer_restart_file, &
+          call read_nc("./INPUT/"//trim(nc_restartfile), tracer_name, &
                        tracer_global(:,-kmax:kmax,:)) 
        else
-!          call Read_field(tracer_global(:,-kmax:kmax,:),tracer_file, &
-!               frame=start_frame_t,zfirst=1)
-          call read_nc("./INPUT/"//trim(nc_restartfile), tracer_restart_file, &
+          call read_nc("./INPUT/"//trim(nc_restartfile), tracer_name, &
                        tracer_global(:,-kmax:kmax,:))
        endif
        call par_scatter(tracer_global,tracer,io_root)

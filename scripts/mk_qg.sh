@@ -6,7 +6,7 @@ set cppDefs = (-O3)
 set root_dir = /lustre/f1/unswept/Junyi.Chai/qg_model_mpi/
 set src_dir = /lustre/f1/unswept/Junyi.Chai/qg_model_mpi/src
 set bld_dir = /lustre/f1/unswept/Junyi.Chai/qg_model_mpi/bld
-set run_dir = /lustre/f1/unswept/Junyi.Chai/qg_model_mpi/run
+set run_dir = /lustre/f1/Junyi.Chai/testqg 
 set template_dir = /lustre/f1/unswept/Junyi.Chai/qg_model_mpi/lib
 
 mkdir -p $bld_dir $run_dir

@@ -8,5 +8,5 @@ module load PrgEnv-intel
 
 cd ../run
 
-#/usr/bin/time -p aprun -n $NUMPRO ./qg_run.x | tee ${i_run}.${$}.log || exit 1
-aprun -n $NUMPRO ./qg_run.x | tee ${i_run}.${$}.log || exit 1
+time -p aprun -n $NUMPRO ./qg_run.x | tee ${i_run}.${$}.log || exit 1
+#aprun -n $NUMPRO ./qg_run.x | tee ${i_run}.${$}.log || exit 1

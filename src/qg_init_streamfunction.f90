@@ -45,7 +45,7 @@ contains
     use qg_params,       only: kmax, nky, ngrid, nz, nkx, y_start, y_end, ny,  &
                                z_o, k_o, m_o, e_o, delk, aspect_vort, del_vort,&
                                i, pi, idum, F,                                 &
-                               psi_init_file, psi_restart_file, psi_file,      &
+                               psi_init_file,                                  &
                                frame, start_frame, rewindfrm,                  &
                                parameters_ok, cr, ci, io_root,                 &
                                initialize_energy, psi_init_type, restarting,   &
@@ -73,10 +73,8 @@ contains
 
        allocate(psi_global(1:nz,-kmax-1:kmax,0:kmax)); psi_global=0.
        if (.not.rewindfrm) then
-!          call Read_field(psi_global(:,-kmax:kmax,:),psi_restart_file,zfirst=1)
           call read_nc("./INPUT/"//trim(nc_restartfile),"psi", psi_global(:,-kmax:kmax,:))
        else
-!          call Read_field(psi_global(:,-kmax:kmax,:),psi_file,start_frame,zfirst=1)
           call read_nc("./INPUT/"//trim(nc_restartfile),"psi", psi_global(:,-kmax:kmax,:))
        endif
        call par_scatter(psi_global,psi,io_root)

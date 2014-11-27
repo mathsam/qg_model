@@ -31,8 +31,8 @@ contains
     use io_tools,  only: Message
     use qg_params, only: ci, cr, parameters_ok, cntr, cnt, total_counts,   &
                          start_frame, frame, d1frame, d2frame, rewindfrm,  & 
-                         write_step, diag1_step, diag2_step,               &
-                         do_spectra, restarting, restart_step, psi_file,   &
+                         write_step, diag1_step, diag2_step,                   &
+                         do_spectra, restarting, restart_step, nc_restartfile, &
                          use_tracer_x, use_tracer_y
     use nc_io_tools, only : create_file, enddef_file, register_variable,     &
                             create_axis_time, create_axis_kx, create_axis_ky,&
@@ -60,7 +60,7 @@ contains
              d2frame = (cntr-1-mod(cntr-1,diag2_step))/diag2_step + 1
           endif
           call Message('Will read streamfunction from:'// &
-                trim(psi_file)//', frame:',tag=start_frame+1)
+                trim(nc_restartfile)//', frame:',tag=start_frame+1)
        endif
 
     elseif (.not.restarting) then
@@ -146,11 +146,10 @@ contains
     ! Write full snapshot of dynamic field and make restart files
     !**************************************************************
 
-    use io_tools,    only: Message, Write_field
-    use qg_params,   only: kmax, nz, nzt, psi_file,       &
+    use io_tools,    only: Message
+    use qg_params,   only: kmax, nz, nzt,                 &
                            use_tracer_x, use_tracer_y,    &
-                           tracer_x_file, tracer_y_file,  &
-                           time, write_time_file, io_root
+                           time, io_root
     use qg_arrays,   only: psi
     use qg_tracers,  only: tracer_x, tracer_y
     use par_tools,   only: par_gather, processor_id, par_sync
@@ -165,7 +164,6 @@ contains
     allocate(psi_global(1:nz,-kmax-1:kmax,0:kmax))
     psi_global=0.
     call par_gather(psi,psi_global,io_root)
-!    call Write_field(psi_global(:,-kmax:kmax,:),psi_file,frame=frameout,zfirst=1)
     call write_nc(psi_var_id, psi_global(:,-kmax:kmax,:))
     deallocate(psi_global)
    
@@ -174,20 +172,15 @@ contains
        tracer_global = 0.
        if (use_tracer_x) then
           call par_gather(tracer_x,tracer_global,io_root)
-!          call Write_field(tracer_global(:,-kmax:kmax,:),tracer_x_file, &
-!                           frame=frameout,zfirst=1) 
           call write_nc(tracerx_var_id, tracer_global(:,-kmax:kmax,:))
        endif
        if (use_tracer_y) then
           call par_gather(tracer_y,tracer_global,io_root)
-!          call Write_field(tracer_global(:,-kmax:kmax,:),tracer_y_file, &
-!                           frame=frameout,zfirst=1) 
           call write_nc(tracery_var_id, tracer_global(:,-kmax:kmax,:))
        endif
        deallocate(tracer_global)
    endif
 
-!   call Write_field(time,write_time_file,frameout)  
    call write_nc(time_var_id, time)
    call Message('Wrote snapshots, frame: ',tag=frameout)
 
@@ -243,12 +236,11 @@ contains
     ! Write full snapshot of dynamic field and make restart files
     !**************************************************************
 
-    use io_tools,    only: Message, Write_field
+    use io_tools,    only: Message
     use qg_params,   only: kmax,nz,nzt,                             &
-                           psi_restart_file,time,restart_time_file, &
-                           use_tracer_x,tracer_x_restart_file,      &
-                           use_tracer_y,tracer_y_restart_file,      &
-                           use_forcing,force_o_file,                &
+                           time,                                    &
+                           use_tracer_x, use_tracer_y,              &
+                           use_forcing,                             &
                            Write_parameters, io_root
     use qg_arrays,   only: psi
     use qg_tracers,  only: tracer_x, tracer_y
@@ -268,7 +260,6 @@ contains
     allocate(psi_global(1:nz,-kmax-1:kmax,0:kmax))
     psi_global=0.
     call par_gather(psi,psi_global,io_root)
-!    call Write_field(psi_global(:,-kmax:kmax,:),psi_restart_file,zfirst=1)
     call write_nc(restart_psi_var_id, psi_global(:,-kmax:kmax,:)) 
     
     deallocate(psi_global)
@@ -278,12 +269,10 @@ contains
        tracer_global = 0.
        if (use_tracer_x) then
           call par_gather(tracer_x,tracer_global,io_root)
-!          call Write_field(tracer_global(:,-kmax:kmax,:),tracer_x_restart_file,zfirst=1)
           call write_nc(restart_tracerx_var_id, tracer_global(:,-kmax:kmax,:))
        endif
        if (use_tracer_y) then
           call par_gather(tracer_y,tracer_global,io_root)
-!          call Write_field(tracer_global(:,-kmax:kmax,:),tracer_y_restart_file,zfirst=1)
           call write_nc(restart_tracery_var_id, tracer_global(:,-kmax:kmax,:))
        endif
        deallocate(tracer_global)
@@ -293,13 +282,11 @@ contains
        allocate(force_o_global(-kmax-1:kmax,0:kmax))
        force_o_global = 0.
        call par_gather(force_o,force_o_global,io_root)
-!       call Write_field(force_o_global,force_o_file)
        call write_nc(restart_force_var_id, force_o_global(-kmax:kmax,:))
        deallocate(force_o_global)
     endif
 
     call Write_parameters            ! Write params for restart.nml
-!    call Write_field(time,restart_time_file,frame=frameout) ! no need for this 
     call Message('Wrote restarts')
 
   end function Write_restarts

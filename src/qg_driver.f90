@@ -13,7 +13,8 @@ program qg_driver
   use qg_topo,                only: init_topo
   use qg_init_streamfunction, only: init_streamfunction
   use qg_output,              only: init_counters, write_restarts, write_snapshots
-  use qg_diagnostics,         only: get_energetics, get_spectra, enstrophy, get_corrs
+  use qg_diagnostics,         only: get_energetics, get_spectra, enstrophy, get_corrs, &
+                                    init_get_energetics
   use qg_filter_tools,        only: init_filter
   use rmf_forcing,            only: init_rmf_forcing, markovian
   use transform_tools,        only: init_transform
@@ -42,6 +43,7 @@ program qg_driver
   if (use_tracer_x.or.use_tracer_y) call Init_tracers  ! requires psi
   call Get_pv                    ! below
   call Get_rhs                   ! below
+  if (do_energetics) call init_get_energetics()
 
   if (.not.parameters_ok) then
      call Message('The listed errors pertain to values set in your input')

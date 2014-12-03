@@ -13,9 +13,17 @@ module qg_diagnostics
 
   implicit none
   private
+  integer :: diag1_time_var_id, ke_var_id, ens_var_id, meanke_var_id,    &
+             filter_rate_var_id, bd_rate_var_id, qd_rate_var_id,         &
+             td_rate_var_id, gen_rmf_rate_var_id, ape_var_id,            &
+             thd_rate_var_id, gen_bci_rate_var_id, filter_rate_tx_var_id,&
+             tvarx_var_id, tvary_var_id,                                 &
+             gen_tg_tx_var_id, filter_rate_ty_var_id, gen_tg_ty_var_id,  &
+             eddy_time_var_id
   save
 
-  public :: Get_energetics, Get_spectra, energy, enstrophy, get_corrs
+  public :: Get_energetics, Get_spectra, energy, enstrophy, get_corrs,   &
+            init_get_energetics
 
   real                                      :: tvary0, tvarx0
   real,dimension(:),allocatable             :: stcor0,shcor0
@@ -123,6 +131,119 @@ contains
 
   !*************************************************************************
 
+  subroutine init_get_energetics()
+
+    !************************************************************************
+    ! Prepare energetics.nc file and variables for Get_energetics function
+    ! below to use
+    !************************************************************************
+
+    use io_tools,    only: Message
+    use qg_params,   only: bot_drag,top_drag,therm_drag,                     &
+                           use_forcing, use_tracer_x,use_tracer_y,           &
+                           quad_drag,surface_bc,filter_type,filter_type_t,   &
+                           time_varying_mean,use_mean_grad_t,                &
+                           nz, F
+    use nc_io_tools, only: create_file, enddef_file, register_variable,      &
+                           create_axis_time
+
+    integer :: energetics_file_id, axis_time_id
+
+    energetics_file_id = create_file("energetics.nc")
+    axis_time_id       = create_axis_time(energetics_file_id)
+
+    diag1_time_var_id = register_variable(energetics_file_id, "time", &
+                                    (/axis_time_id/), .false.)
+
+    ke_var_id   = register_variable(energetics_file_id, "ke", &
+                                    (/axis_time_id/), .false.)
+
+    ens_var_id  = register_variable(energetics_file_id, "ens", &
+                                    (/axis_time_id/), .false.)
+
+    if (time_varying_mean) then
+        meanke_var_id = register_variable(energetics_file_id, "meanke", &
+                                    (/axis_time_id/), .false.)
+    endif
+
+    if (trim(filter_type)/='none') then
+        filter_rate_var_id = register_variable(energetics_file_id, "filter_rate", &
+                                    (/axis_time_id/), .false.)
+    endif
+
+    if (bot_drag/=0) then
+        bd_rate_var_id = register_variable(energetics_file_id, "bottom_drag_rate", &
+                                    (/axis_time_id/), .false.)
+    endif
+
+    if (quad_drag/=0) then
+        qd_rate_var_id = register_variable(energetics_file_id, "quad_drag_rate", &
+                                    (/axis_time_id/), .false.)
+    endif
+
+    if (top_drag/=0) then
+        td_rate_var_id = register_variable(energetics_file_id, "top_drag_rate", &
+                                    (/axis_time_id/), .false.)
+    endif
+
+    if (use_forcing) then
+        gen_rmf_rate_var_id = register_variable(energetics_file_id, "gen_rmf_rate", &
+                                    (/axis_time_id/), .false.)
+    endif
+
+    if (nz>1 .or. F/=0) then
+        ape_var_id = register_variable(energetics_file_id, "ape", &
+                                    (/axis_time_id/), .false.)
+        if (therm_drag/=0) then
+            thd_rate_var_id = register_variable(energetics_file_id, "therm_drag_rate", &
+                                    (/axis_time_id/), .false.)
+        endif
+
+        if (nz>1) then
+            gen_bci_rate_var_id = register_variable(energetics_file_id, "gen_bci_rate", &
+                                    (/axis_time_id/), .false.)
+        endif
+    endif
+
+    if (use_tracer_x) then
+        tvarx_var_id = register_variable(energetics_file_id, "tvarx", &
+                                    (/axis_time_id/), .false.)
+
+        if(trim(filter_type_t)/='none') then
+            filter_rate_tx_var_id = register_variable(energetics_file_id, "filter_rate_tx", &
+                                    (/axis_time_id/), .false.)
+        endif
+
+        if (use_mean_grad_t) then
+            gen_tg_tx_var_id = register_variable(energetics_file_id, "gen_tg_tx", &
+                                    (/axis_time_id/), .false.)
+        endif
+    endif
+
+    if (use_tracer_y) then
+        tvary_var_id = register_variable(energetics_file_id, "tvary", &
+                                    (/axis_time_id/), .false.)
+
+        if(trim(filter_type_t)/='none') then
+            filter_rate_ty_var_id = register_variable(energetics_file_id, "filter_rate_ty", &
+                                    (/axis_time_id/), .false.)
+        endif
+
+        if (use_mean_grad_t) then
+            gen_tg_ty_var_id = register_variable(energetics_file_id, "gen_tg_ty", &
+                                    (/axis_time_id/), .false.)
+        endif
+    endif
+
+    eddy_time_var_id = register_variable(energetics_file_id, "eddy_time", &
+                                    (/axis_time_id/), .false.)
+
+    call enddef_file(energetics_file_id)
+    call Message("energetics.nc initialized")
+
+  end subroutine init_get_energetics
+
+
   function Get_energetics(framein) result(dframe)
 
     !************************************************************************
@@ -143,9 +264,10 @@ contains
                            time,cntr,uscale,vscale,use_forcing,                     &
                            use_tracer_x,use_tracer_y,                        &
                            quad_drag,surface_bc,filter_type,filter_type_t,   &
-                           time_varying_mean,use_mean_grad_t, do_energetics
+                           time_varying_mean,use_mean_grad_t
     use qg_filter_tools, only: get_filter_rate
     use par_tools,    only: par_sum
+    use nc_io_tools,  only: write_nc
     use, intrinsic :: ieee_arithmetic
 
 
@@ -163,56 +285,67 @@ contains
 
     dframe = framein + 1            ! Update diagnostics frame counter
 
-    call Write_field(time,'diag1_time',dframe) 
+!    call Write_field(time,'diag1_time',dframe) 
                                      ! Track diagnostic-writes
+    call write_nc(diag1_time_var_id, time) 
     
     ke = sum(ksqd_*dz*psi*conjg(psi))
     call par_sum(ke)
-    call Write_field(ke,'ke',dframe)
+!    call Write_field(ke,'ke',dframe)
+    call write_nc(ke_var_id, ke)
 
     ens = sum( dz*(q*conjg(q)) )
     call par_sum(ens)
-    call Write_field(ens,'ens',dframe) 
+!    call Write_field(ens,'ens',dframe) 
+    call write_nc(ens_var_id, ens)
 
     if (time_varying_mean) then
        meanke = sum(dz*(ubar**2 + vbar**2))/2
-       call Write_field(meanke,'mean_ke',dframe)
+!       call Write_field(meanke,'mean_ke',dframe)
+       call write_nc(meanke_var_id,meanke)
     end if
 
     if (trim(filter_type)/='none') then
        filter_rate = get_filter_rate(psi,q,filter,dz,dt)
-       call Write_field(filter_rate,'filter_rate',dframe)
+!       call Write_field(filter_rate,'filter_rate',dframe)
+       call write_nc(filter_rate_var_id, filter_rate)
     endif
 
     if (bot_drag/=0) then
        bd_rate = -2*sum(bot_drag*ksqd_*dz(nz)*conjg(psi(nz,:,:))*psi(nz,:,:))
        call par_sum(bd_rate)
-       call Write_field(bd_rate,'bd_rate',dframe)
+!       call Write_field(bd_rate,'bd_rate',dframe)
+       call write_nc(bd_rate_var_id, bd_rate)
     endif
     if (quad_drag/=0) then
        qd_rate = 2*sum(dz(nz)*conjg(psi(nz,:,:))*qdrag)
        call par_sum(qd_rate)
-       call Write_field(qd_rate,'qd_rate',dframe)
+!       call Write_field(qd_rate,'qd_rate',dframe)
+       call write_nc(qd_rate_var_id, qd_rate)
     endif
     if (top_drag/=0) then
        td_rate = -2*sum(top_drag*ksqd_*dz(1)*conjg(psi(1,:,:))*psi(1,:,:))
        call par_sum(td_rate)
-       call Write_field(td_rate,'td_rate',dframe)
+!       call Write_field(td_rate,'td_rate',dframe)
+       call write_nc(td_rate_var_id, td_rate)
     endif
     if (use_forcing) then
        gen_rmf_rate = get_gen_rmf_rate(psi)
-       call Write_field(gen_rmf_rate,'gen_rmf_rate',dframe)
+!       call Write_field(gen_rmf_rate,'gen_rmf_rate',dframe)
+       call write_nc(gen_rmf_rate_var_id, gen_rmf_rate)
     endif
     if (nz>1) then
        ape = sum(F*conjg(psi(2:nz,:,:)-psi(1:nz-1,:,:))* &
             (psi(2:nz,:,:)-psi(1:nz-1,:,:))*(1/drho(1:nz-1)))
        call par_sum(ape)
-       call Write_field(ape,'ape',dframe)
+!       call Write_field(ape,'ape',dframe)
+       call write_nc(ape_var_id, ape)
 
        gen_bci_rate = -2*sum(real(i*(kx_*(dz*conjg(psi)*(shearu*psi-ubar*q)))))&
                       -2*sum(real(i*(ky_*(dz*conjg(psi)*(shearv*psi-vbar*q)))))
        call par_sum(gen_bci_rate)
-       call Write_field(gen_bci_rate,'gen_bci_rate',dframe)
+!       call Write_field(gen_bci_rate,'gen_bci_rate',dframe)
+       call write_nc(gen_bci_rate_var_id, gen_bci_rate)
        if (therm_drag/=0) then
 !          if (trim(surface_bc)=='surf_buoy') then
 !             ! extrapolate psi(1) to surface
@@ -224,52 +357,62 @@ contains
 !                   -conjg(psi(2,:,:))*(psi(2,:,:)-psi(1,:,:)))))
 !          endif
           call par_sum(thd_rate)
-          call Write_field(thd_rate,'thd_rate',dframe)
+!          call Write_field(thd_rate,'thd_rate',dframe)
+          call write_nc(thd_rate_var_id, thd_rate)
        endif
     elseif (nz==1.and.F/=0) then     ! checked
        ape = F*sum(psi*conjg(psi))
        call par_sum(ape)
-       call Write_field(ape,'ape',dframe)
+!       call Write_field(ape,'ape',dframe)
+       call write_nc(ape_var_id, ape)
        if (therm_drag/=0) then
           thd_rate = -2*sum(therm_drag*F*conjg(psi)*psi)
           call par_sum(thd_rate)
-          call Write_field(thd_rate,'thd_rate',dframe)
+!          call Write_field(thd_rate,'thd_rate',dframe)
+          call write_nc(thd_rate_var_id, thd_rate)
        endif
     endif
 
     if (use_tracer_x) then
        tvarx = sum(dzt*tracer_x*conjg(tracer_x))
        call par_sum(tvarx)
-       call Write_field(tvarx,'tvarx',dframe)
+!       call Write_field(tvarx,'tvarx',dframe)
+       call write_nc(tvarx_var_id, tvarx)
        if (trim(filter_type_t)/='none') then
           filter_rate_tx = -get_filter_rate(tracer_x,tracer_x,filter_t,dzt,dt)
-          call Write_field(filter_rate_tx,'filter_rate_tx',dframe)
+!          call Write_field(filter_rate_tx,'filter_rate_tx',dframe)
+          call write_nc(filter_rate_tx_var_id, filter_rate_tx)
        endif
        if (use_mean_grad_t) then
           gen_tg_tx = - 2*sum(real(dzt*tracer_x*conjg(i*ky_*psi_stir)))
           call par_sum(gen_tg_tx)
-          call Write_field(gen_tg_tx,'gen_tg_tx',dframe)
+!          call Write_field(gen_tg_tx,'gen_tg_tx',dframe)
+          call write_nc(gen_tg_tx_var_id, gen_tg_tx)
        endif
     endif
     if (use_tracer_y) then
        tvary = sum(dzt*tracer_y*conjg(tracer_y))
        call par_sum(tvary)
-       call Write_field(tvary,'tvary',dframe)
+!       call Write_field(tvary,'tvary',dframe)
+       call write_nc(tvary_var_id, tvary)
        if (trim(filter_type_t)/='none') then
           filter_rate_ty = -get_filter_rate(tracer_y,tracer_y,filter_t,dzt,dt)
-          call Write_field(filter_rate_ty,'filter_rate_ty',dframe)
+!          call Write_field(filter_rate_ty,'filter_rate_ty',dframe)
+          call write_nc(filter_rate_ty_var_id, filter_rate_ty)
        endif
        if (use_mean_grad_t) then
           gen_tg_ty = - 2*sum(real(dzt*tracer_y*conjg(i*kx_*psi_stir)))
           call par_sum(gen_tg_ty)
-          call Write_field(gen_tg_ty,'gen_tg_ty',dframe)
+!          call Write_field(gen_tg_ty,'gen_tg_ty',dframe)
+          call write_nc(gen_tg_ty_var_id, gen_tg_ty)
        endif
     endif
        
     zeta_rms = 2*sum( dz*(ksqd_**2*psi*conjg(psi)) )
     call par_sum(zeta_rms)
     eddy_time = 2*pi/sqrt(zeta_rms)
-    call Write_field(eddy_time,'eddy_time',dframe)
+!    call Write_field(eddy_time,'eddy_time',dframe)
+    call write_nc(eddy_time_var_id, eddy_time)
     
     ! Check for floating point exceptions 
 

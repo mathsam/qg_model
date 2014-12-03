@@ -15,6 +15,7 @@ DEBUG =
 REPRO =
 VERBOSE =
 OPENMP =
+FAST = 
 
 ##############################################
 # Need to use at least GNU Make version 3.81 #
@@ -34,8 +35,8 @@ INCLUDE += -I$(MPICH_DIR)/include
 
 FPPFLAGS := -fpp -Wp,-w $(INCLUDE)
 
-FFLAGS := -fno-alias -auto -safe-cray-ptr -ftz -assume byterecl -i4 -r8 -nowarn -sox $(INCLUDE)
-FFLAGS_OPT = -O3 -debug minimal -fp-model precise -override-limits
+FFLAGS := -fno-alias -auto -safe-cray-ptr -ftz -assume byterecl -i4 -r8 -sox $(INCLUDE)
+FFLAGS_OPT = -O3 -debug minimal -fp-model precise -override-limits -ipo -xHost
 FFLAGS_DEBUG = -g -O0 -check -check noarg_temp_created -check nopointer -warn -warn noerrors -fpe0 -traceback -ftrapuv
 FFLAGS_REPRO = -O2 -debug minimal -fp-model precise -override-limits
 FFLAGS_OPENMP = -openmp
@@ -67,10 +68,13 @@ FFLAGS += $(FFLAGS_DEBUG)
 else ifneq ($(TEST),)
 CFLAGS += $(CFLAGS_TEST)
 FFLAGS += $(FFLAGS_TEST)
+else ifneq ($(FAST),)
+FFLAGS += -fast -debug minimal
 else
 CFLAGS += $(CFLAGS_OPT)
 FFLAGS += $(FFLAGS_OPT)
 endif
+
 
 ifneq ($(OPENMP),)
 CFLAGS += $(CFLAGS_OPENMP)
@@ -106,6 +110,7 @@ LDFLAGS += $(LIBS)
 #FFLAGS +=  -O3 -r8 -i4 -assume byterecl -xT -ipo -nowarn
 #FFLAGS +=  -O3 -r8 -i4 -assume byterecl -xT -ipo -nowarn
 LDFLAGS +=  -L/lustre/f1/unswept/Junyi.Chai/lib/fftw2.1.5/lib -lfftw_mpi -lfftw -L$(NETCDF_DIR)/lib
+#LDFLAGS += -L/lustre/f1/unswept/Junyi.Chai/lib/fftw2.1.5-mpi/lib -lfftw_mpi -lfftw
 
 
 #---------------------------------------------------------------------------

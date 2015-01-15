@@ -229,6 +229,10 @@ module qg_params                   !-*-f90-*-
   integer                 :: kx_start, kx_end, nkx, y_start, y_end, ny
   integer                 :: io_root = 0
 
+  ! Parameters that set up the sponge at the walls of the channels
+  real                    :: sponge_rate  = -1.0 ! negative value mean no sponge in use
+  real                    :: sponge_width = 3.14159265358979/10.0 ! between (0,pi) as domain is [0, 2*pi]
+
   ! Cabalistic numbers 
 
   real,parameter          :: pi          = 3.14159265358979
@@ -307,6 +311,9 @@ module qg_params                   !-*-f90-*-
 
   ! switchs: if do energetics
   namelist/run_params/do_energetics
+
+  ! sponge params
+  namelist/run_params/sponge_rate,sponge_width
 
   ! End of Namelist definition
 

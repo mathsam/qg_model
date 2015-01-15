@@ -2,8 +2,6 @@
 
 SRCROOT = /lustre/f1/unswept/Junyi.Chai/qg_model_mpi/src/
 
-CPPDEFS = -O3
-
 
 include /lustre/f1/unswept/Junyi.Chai/qg_model_mpi/lib/intel.mk
 
@@ -29,7 +27,7 @@ qg_arrays.o: $(SRCROOT)qg_arrays.f90 qg_params.o io_tools.o par_tools.o
 	$(FC) $(FFLAGS) $(OTHERFLAGS) $(OTHER_FFLAGS) -c	$(SRCROOT)qg_arrays.f90
 qg_diagnostics.o: $(SRCROOT)qg_diagnostics.f90 op_rules.o qg_params.o qg_arrays.o qg_strat_and_shear.o par_tools.o io_tools.o numerics_lib.o rmf_forcing.o qg_tracers.o qg_filter_tools.o transform_tools.o strat_tools.o
 	$(FC) $(FFLAGS) $(OTHERFLAGS) $(OTHER_FFLAGS) -c	$(SRCROOT)qg_diagnostics.f90
-qg_driver.o: $(SRCROOT)qg_driver.f90 qg_arrays.o qg_params.o qg_strat_and_shear.o qg_tracers.o qg_topo.o qg_init_streamfunction.o qg_output.o qg_diagnostics.o qg_filter_tools.o rmf_forcing.o transform_tools.o numerics_lib.o io_tools.o par_tools.o op_rules.o
+qg_driver.o: $(SRCROOT)qg_driver.f90 qg_arrays.o qg_params.o qg_strat_and_shear.o qg_tracers.o qg_topo.o qg_init_streamfunction.o qg_output.o qg_diagnostics.o qg_filter_tools.o rmf_forcing.o transform_tools.o numerics_lib.o io_tools.o par_tools.o op_rules.o qg_sponge.o
 	$(FC) $(FFLAGS) $(OTHERFLAGS) $(OTHER_FFLAGS) -c	$(SRCROOT)qg_driver.f90
 qg_filter_tools.o: $(SRCROOT)qg_filter_tools.f90 io_tools.o qg_params.o qg_arrays.o par_tools.o op_rules.o
 	$(FC) $(FFLAGS) $(OTHERFLAGS) $(OTHER_FFLAGS) -c	$(SRCROOT)qg_filter_tools.f90
@@ -39,6 +37,8 @@ qg_output.o: $(SRCROOT)qg_output.f90 io_tools.o qg_params.o qg_arrays.o qg_trace
 	$(FC) $(FFLAGS) $(OTHERFLAGS) $(OTHER_FFLAGS) -c	$(SRCROOT)qg_output.f90
 nc_io_tools.o: $(SRCROOT)nc_io_tools.f90
 	$(FC) $(FFLAGS) $(OTHERFLAGS) $(OTHER_FFLAGS) -c  -I$(NETCDF_DIR)/include      $(SRCROOT)nc_io_tools.f90
+qg_sponge.o: $(SRCROOT)qg_sponge.f90 qg_params.o transform_tools.o io_tools.o
+	$(FC) $(FFLAGS) $(OTHERFLAGS) $(OTHER_FFLAGS) -c        $(SRCROOT)qg_sponge.f90
 qg_params.o: $(SRCROOT)qg_params.f90 io_tools.o par_tools.o nc_io_tools.o
 	$(FC) $(FFLAGS) $(OTHERFLAGS) $(OTHER_FFLAGS) -c	$(SRCROOT)qg_params.f90
 qg_strat_and_shear.o: $(SRCROOT)qg_strat_and_shear.f90 io_tools.o qg_arrays.o qg_params.o numerics_lib.o par_tools.o strat_tools.o
@@ -55,6 +55,8 @@ transform_tools.o: $(SRCROOT)transform_tools.f90 fft_fftw.o par_tools.o io_tools
 	$(FC) $(FFLAGS) $(OTHERFLAGS) $(OTHER_FFLAGS) -c	$(SRCROOT)transform_tools.f90
 ./nc_io_tools.f90: $(SRCROOT)nc_io_tools.f90
 	cp $(SRCROOT)nc_io_tools.f90
+./qg_sponge.f90: $(SRCROOT)qg_sponge.f90
+	cp $(SRCROOT)qg_sponge.f90
 ./mpif.h: $(SRCROOT)mpif.h
 	cp $(SRCROOT)mpif.h .
 ./fft_fftw.f90: $(SRCROOT)fft_fftw.f90
@@ -98,7 +100,7 @@ transform_tools.o: $(SRCROOT)transform_tools.f90 fft_fftw.o par_tools.o io_tools
 ./qg_tracers.f90: $(SRCROOT)qg_tracers.f90
 	cp $(SRCROOT)qg_tracers.f90 .
 SRC = $(SRCROOT)qg_params.f90 $(SRCROOT)par_tools.f90 $(SRCROOT)eig_pak.f90 $(SRCROOT)strat_tools.f90 $(SRCROOT)qg_output.f90 $(SRCROOT)transform_tools.f90 $(SRCROOT)eigrg1.f $(SRCROOT)qg_topo.f90 $(SRCROOT)qg_init_streamfunction.f90 $(SRCROOT)rmf_forcing.f90 $(SRCROOT)io_tools.f90 $(SRCROOT)qg_arrays.f90 $(SRCROOT)qg_driver.f90 $(SRCROOT)qg_strat_and_shear.f90 $(SRCROOT)qg_diagnostics.f90 $(SRCROOT)qg_tracers.f90 $(SRCROOT)op_rules.f90 $(SRCROOT)fft_fftw.f90 $(SRCROOT)qg_filter_tools.f90 $(SRCROOT)numerics_lib.f90 $(SRCROOT)mpif.h $(SRCROOT)nc_io_tools.f90
-OBJ = qg_params.o par_tools.o eig_pak.o strat_tools.o qg_output.o transform_tools.o eigrg1.o qg_topo.o qg_init_streamfunction.o rmf_forcing.o io_tools.o qg_arrays.o qg_driver.o qg_strat_and_shear.o qg_diagnostics.o qg_tracers.o op_rules.o fft_fftw.o qg_filter_tools.o numerics_lib.o nc_io_tools.o
+OBJ = qg_params.o par_tools.o eig_pak.o strat_tools.o qg_output.o transform_tools.o eigrg1.o qg_topo.o qg_init_streamfunction.o rmf_forcing.o io_tools.o qg_arrays.o qg_driver.o qg_strat_and_shear.o qg_diagnostics.o qg_tracers.o op_rules.o fft_fftw.o qg_filter_tools.o numerics_lib.o nc_io_tools.o qg_sponge.o
 OFF = $(SRCROOT)mpif.h $(SRCROOT)fft_fftw.f90 $(SRCROOT)transform_tools.f90 $(SRCROOT)eig_pak.f90 $(SRCROOT)qg_driver.f90 $(SRCROOT)eigrg1.f $(SRCROOT)qg_strat_and_shear.f90 $(SRCROOT)qg_init_streamfunction.f90 $(SRCROOT)io_tools.f90 $(SRCROOT)rmf_forcing.f90 $(SRCROOT)qg_diagnostics.f90 $(SRCROOT)qg_arrays.f90 $(SRCROOT)qg_output.f90 $(SRCROOT)qg_topo.f90 $(SRCROOT)qg_params.f90 $(SRCROOT)numerics_lib.f90 $(SRCROOT)par_tools.f90 $(SRCROOT)qg_filter_tools.f90 $(SRCROOT)op_rules.f90 $(SRCROOT)strat_tools.f90 $(SRCROOT)qg_tracers.f90
 clean: neat
 	-rm -f .qg_run.x.cppdefs $(OBJ) qg_run.x

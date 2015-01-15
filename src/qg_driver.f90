@@ -23,6 +23,7 @@ program qg_driver
   use par_tools,              only: init_par, end_par, par_sync, processor_id
   use op_rules,               only: operator(+), operator(-), operator(*)
   use nc_io_tools,            only: close_all_files
+  use qg_sponge,              only: init_qg_sponge
 
   implicit none
 
@@ -42,6 +43,11 @@ program qg_driver
   call Init_streamfunction
   if (use_tracer_x.or.use_tracer_y) call Init_tracers  ! requires psi
   call Get_pv                    ! below
+
+  if (sponge_rate > 0.) then
+     call init_qg_sponge()
+  endif
+
   call Get_rhs                   ! below
   if (do_energetics) call init_get_energetics()
 
@@ -49,7 +55,7 @@ program qg_driver
      call Message('The listed errors pertain to values set in your input')
      call Message('namelist file - correct the entries and try again.',fatal='y')
   endif
-     
+
   ! *********** Main time loop *************************
 
   call Message('Beginning calculation')
@@ -109,6 +115,8 @@ contains
     use qg_strat_and_shear, only: qbarx, qbary, ubar, vbar, dz
     use qg_topo,            only: hb, toposhift
     use transform_tools,    only: grid2spec, spec2grid, ir_pwr, ir_prod
+    use qg_sponge,          only: apply_sponge
+    complex,dimension(nz,ny,ngrid) :: q_pgrid ! PV on physical grid
 
     if (.not.linear) then
        call Spec2grid(-i*ky_*psi,ug)
@@ -117,7 +125,13 @@ contains
        call Spec2grid(i*kx_*q,qxg) 
        call Spec2grid(i*ky_*q,qyg)
        if (use_topo) q(nz,:,:) = q(nz,:,:) - hb
-       call Grid2spec(-ir_prod(ug,qxg) - ir_prod(vg,qyg),rhs) 
+       if (sponge_rate > 0.) then
+           call spec2grid(q, q_pgrid) 
+           call Grid2spec(-ir_prod(ug,qxg) - ir_prod(vg,qyg) &
+                          + apply_sponge(q_pgrid), rhs)
+       else
+           call Grid2spec(-ir_prod(ug,qxg) - ir_prod(vg,qyg),rhs)
+       endif
          
       if (quad_drag/=0) then  
          unormbg = ir_pwr(ir_pwr(ug(nz,:,:),2.) + ir_pwr(vg(nz,:,:),2.),.5)

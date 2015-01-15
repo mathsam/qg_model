@@ -1,0 +1,13 @@
+Junyi, Jan 14, 2015
+
+The following code from qg_driver.f90:
+
+    if (.not.linear) then
+       call Spec2grid(-i*ky_*psi,ug)
+       call Spec2grid(i*kx_*psi,vg)
+       if (use_topo) q(nz,:,:) = q(nz,:,:) + hb
+       call Spec2grid(i*kx_*q,qxg)
+       call Spec2grid(i*ky_*q,qyg)
+       if (use_topo) q(nz,:,:) = q(nz,:,:) - hb
+
+The two if (use_topo) clearly have problem

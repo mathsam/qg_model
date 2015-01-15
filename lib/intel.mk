@@ -37,7 +37,8 @@ FPPFLAGS := -fpp -Wp,-w $(INCLUDE)
 
 FFLAGS := -fno-alias -auto -safe-cray-ptr -ftz -assume byterecl -i4 -r8 -sox $(INCLUDE)
 FFLAGS_OPT = -O3 -debug minimal -fp-model precise -override-limits -ipo -xHost
-FFLAGS_DEBUG = -g -O0 -check -check noarg_temp_created -check nopointer -warn -warn noerrors -fpe0 -traceback -ftrapuv
+#FFLAGS_DEBUG = -g -O0 -check -check noarg_temp_created -check nopointer -warn -warn noerrors -fpe0 -traceback -ftrapuv
+FFLAGS_DEBUG = -g
 FFLAGS_REPRO = -O2 -debug minimal -fp-model precise -override-limits
 FFLAGS_OPENMP = -openmp
 FFLAGS_VERBOSE = -v -V -what

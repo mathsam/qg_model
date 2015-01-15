@@ -41,12 +41,12 @@ contains
            ! non-staggered
            lat = (DBLE(y)-1.)/DBLE(ngrid)*2.*pi   
            lower_sponge = sponge_rate*(1. - lat/sponge_width)
-           upper_sponge = sponge_rate*(y - 2.*pi + sponge_width)/sponge_width
+           upper_sponge = sponge_rate*(lat - 2.*pi + sponge_width)/sponge_width
            sponge_mask(:,iy,ix) = max(0., lower_sponge, upper_sponge)
            ! staggered
            lat = (DBLE(y)-0.5)/DBLE(ngrid)*2.*pi             
            lower_sponge = sponge_rate*(1. - lat/sponge_width)
-           upper_sponge = sponge_rate*(y - 2.*pi + sponge_width)/sponge_width
+           upper_sponge = sponge_rate*(lat - 2.*pi + sponge_width)/sponge_width
            sponge_mask(:,iy,ix) = sponge_mask(:,iy,ix) + &
                                   cmplx(0., 1.) * max(0., lower_sponge, upper_sponge)
         enddo

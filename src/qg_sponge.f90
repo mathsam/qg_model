@@ -56,7 +56,7 @@ contains
 
 
   function apply_sponge(q_in) result (rhs_out)
-    ! q is on physical grid. rhs_out is also on physical grid
+    ! q_in is on physical grid. rhs_out is also on physical grid
     ! return -q_in*sponge_mask
     use transform_tools, only: spec2grid, ir_prod
     complex,dimension(:,:,:),intent(in)                       :: q_in

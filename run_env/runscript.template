@@ -1,0 +1,16 @@
+#!/bin/csh
+#PBS -l walltime=$walltime
+#PBS -l size=$num_procs
+#PBS -m e
+#PBS -l partition=c1:c2
+#PBS -N $exp_name
+
+#---------- template variables ---------------
+# num_procs: number of processors
+# exp_name:  name of experiment
+# walltime:  maximum time to run experiment
+
+
+/usr/bin/time -ap -o runtime aprun -n $num_procs ./qg_run.x
+
+msub ./transferScript

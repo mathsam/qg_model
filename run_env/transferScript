@@ -1,0 +1,42 @@
+#!/bin/csh -f
+#PBS -l size=1
+#PBS -l walltime=00:60:00
+#PBS -q eslogin
+
+if (1 > 0) then
+   source ./restartNum
+   set fileNameHistory = Nov28_hires_qg_seg{$restartNum}.nc
+   set fileNameEnergy  = Nov28_hires_qg_energy_seg{$restartNum}.nc
+else
+   set fileNameHistory = Nov28_hires_qg.nc
+   set fileNameEnergy  = Nov28_hires_qg_energy.nc
+endif
+
+mv history.nc     $fileNameHistory
+mv energetics.nc  $fileNameEnergy
+
+if (1 > 0 && $restartNum < 20) then
+set Files = ( `/bin/ls -1 ./RESTART/*` )
+if ( $#Files > 0 ) then
+    mv -f ./RESTART/* ./INPUT/
+
+    msub ./runscript
+    echo "restart a run"
+
+   @ restartNum ++
+
+    cat >./restartNum <<END_TEXT
+#!/bin/csh
+set restartNum = $restartNum
+END_TEXT
+
+else
+    echo "empty restart; run failed"
+    mail-files junyi.chai@noaa.gov Nov28_hires_qg $restartNum ./runscript
+endif
+endif
+
+gcp --batch -cd $fileNameHistory gfdl:/archive/Junyi.Chai/QG_exp/Nov28_hires_qg/
+gcp --batch -cd $fileNameEnergy  gfdl:/archive/Junyi.Chai/QG_exp/Nov28_hires_qg/
+
+exit

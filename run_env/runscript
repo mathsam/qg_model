@@ -1,0 +1,12 @@
+#!/bin/csh
+#PBS -l walltime=16:00:00
+#PBS -l size=64
+#PBS -m e
+#PBS -l partition=c1:c2
+#PBS -N qg_test
+
+set NUMPRO = 64
+
+/usr/bin/time -ap -o runtime aprun -n $NUMPRO ./qg_run.x
+
+msub ./transferScript

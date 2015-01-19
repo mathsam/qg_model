@@ -35,14 +35,15 @@ f1_dir      = '/lustre/f1/Junyi.Chai/'
 exe_file    = '/lustre/f1/unswept/Junyi.Chai/qg_model_mpi/bld/qg_run.x'
 
 #--------------- experiment parameters -------------------
-exp_name    = 'Jan17_drag_1e0'
+exp_name    = 'Jan18_c2.5_drag_1e-3'
 num_procs   = 128
-walltime    = '16:00:00'
+walltime    = '4:00:00'
 
 domain_size_over_Ld = 250.
-nondim_drag         = 1e0
+nondim_drag         = 1e-3
+criticality         = 2.5
 F        = (domain_size_over_Ld/2./math.pi)**2
-beta     = 3957.86
+beta     = 4*F/criticality 
 bot_drag = nondim_drag*math.sqrt(F)
 #---------------------------------------------------------
 
@@ -50,6 +51,7 @@ exp_dir = f1_dir + exp_name + '/'
 
 print "Domain size/Deformation radius = ", math.sqrt(F)*2*math.pi 
 print "Nondimensional friction = ", bot_drag/math.sqrt(F)
+print "Criticality = ", 4*F/beta
 print "Expriment will be ran at ", exp_dir
 
 exp_dir = f1_dir + exp_name + '/'

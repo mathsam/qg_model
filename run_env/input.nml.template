@@ -20,7 +20,7 @@
  do_spectra    = .false.
  do_energetics = .true.
  use_tracer_x = F 
- use_tracer_y = T
+ use_tracer_y = T 
  use_mean_grad_t = T
  filter_type_t = 'hyperviscous'
  filter_exp_t  = 4 

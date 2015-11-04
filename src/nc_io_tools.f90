@@ -72,7 +72,7 @@ module nc_io_tools
   integer            :: current_var_num = 1
 
   integer, parameter :: NAN = -9999
-  integer, parameter :: MAX_NUM_DIMS = 5 
+  integer, parameter :: MAX_NUM_DIMS = 20 
   type t_file_info
     integer                          :: nc_file_id
     integer, dimension(MAX_NUM_DIMS) :: axis_id_list = NAN
@@ -80,7 +80,7 @@ module nc_io_tools
     integer                          :: current_num_dims = 1
   end type t_file_info
 
-  integer, parameter :: MAX_FILES = 10
+  integer, parameter :: MAX_FILES = 20
   type(t_file_info)  :: file_info_list(MAX_FILES)
   integer            :: current_file_num = 1
 
@@ -91,7 +91,9 @@ module nc_io_tools
   public :: pass_params_nc_io, create_file, enddef_file,             &
             close_all_files,                                         &
             register_variable, write_nc,                             &
-            create_axis_time, create_axis_kx, create_axis_ky,        &
+            create_axis_time, create_axis_ktotal,                    &
+            create_axis_custom,                                      &
+            create_axis_kx, create_axis_ky,                          &
             create_axis_z, create_axis_real_and_imag,                &
             create_axis_lon, create_axis_lat, read_nc
 
@@ -463,6 +465,54 @@ contains
     file_info_list(file_id)%current_num_dims = current_num_dims + 1
     return
   end function create_axis_time
+
+  integer function create_axis_custom(file_id, axis_name, axis_length)
+    integer,      intent(in) :: file_id, axis_length
+    character(*), intent(in) :: axis_name
+    integer:: status, axis_dimid
+    integer:: nc_file_id, current_num_dims 
+
+    if (my_pe /= io_root) then
+        create_axis_custom = -1
+        return
+    endif
+
+    nc_file_id = file_info_list(file_id)%nc_file_id
+    status = nf90_def_dim(nc_file_id, axis_name, axis_length, axis_dimid)
+    if (status /= nf90_noerr) call handle_err(status,"create custom axis error")
+
+    current_num_dims = file_info_list(file_id)%current_num_dims
+    if(current_num_dims > MAX_NUM_DIMS) call axis_dim_exceed_err
+    file_info_list(file_id)%axis_id_list(current_num_dims) = axis_dimid
+    file_info_list(file_id)%output_length_list(current_num_dims) = axis_length
+    create_axis_custom = current_num_dims
+    file_info_list(file_id)%current_num_dims = current_num_dims + 1
+    return
+  end function create_axis_custom
+
+  integer function create_axis_ktotal(file_id)
+    integer, intent(in):: file_id
+    integer:: status, ktotal_dimid, nktotal
+    integer:: nc_file_id, current_num_dims 
+
+    if (my_pe /= io_root) then
+        create_axis_ktotal = -1
+        return
+    endif
+
+    nc_file_id = file_info_list(file_id)%nc_file_id
+    nktotal = kmax
+    status = nf90_def_dim(nc_file_id, "ktotal", nktotal, ktotal_dimid)
+    if (status /= nf90_noerr) call handle_err(status,"create ktotal error")
+
+    current_num_dims = file_info_list(file_id)%current_num_dims
+    if(current_num_dims > MAX_NUM_DIMS) call axis_dim_exceed_err
+    file_info_list(file_id)%axis_id_list(current_num_dims) = ktotal_dimid
+    file_info_list(file_id)%output_length_list(current_num_dims) = nktotal
+    create_axis_ktotal = current_num_dims
+    file_info_list(file_id)%current_num_dims = current_num_dims + 1
+    return
+  end function create_axis_ktotal
 
   integer function create_axis_kx(file_id)
     integer, intent(in):: file_id

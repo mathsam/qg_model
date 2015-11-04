@@ -14,7 +14,7 @@ program qg_driver
   use qg_init_streamfunction, only: init_streamfunction
   use qg_output,              only: init_counters, write_restarts, write_snapshots
   use qg_diagnostics,         only: get_energetics, get_spectra, enstrophy, get_corrs, &
-                                    init_get_energetics
+                                    init_get_energetics, init_get_spectra
   use qg_filter_tools,        only: init_filter
   use rmf_forcing,            only: init_rmf_forcing, markovian
   use transform_tools,        only: init_transform
@@ -50,6 +50,7 @@ program qg_driver
 
   call Get_rhs                   ! below
   if (do_energetics) call init_get_energetics()
+  if (do_spectra)    call init_get_spectra()
 
   if (.not.parameters_ok) then
      call Message('The listed errors pertain to values set in your input')

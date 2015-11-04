@@ -20,10 +20,18 @@ module qg_diagnostics
              tvarx_var_id, tvary_var_id,                                 &
              gen_tg_tx_var_id, filter_rate_ty_var_id, gen_tg_ty_var_id,  &
              eddy_time_var_id
+  integer :: diagspec_time_var_id, kes_var_id, kesx_var_id, kesy_var_id, &
+             gens_var_id, gens_rmf_var_id, kems_var_id, kemsx_var_id,    &
+             kemsy_var_id, apems_var_id, apes_var_id, genms_var_id,      &
+             thdms_var_id, bdms_var_id, tdms_var_id, qdms_var_id,        &
+             filterms_var_id, xferms_var_id, energy_xfers_var_id,        &
+             enstrophy_xfers_var_id, txvars_var_id, txfluxs_var_id,      &
+             tyvars_var_id, tyfluxs_var_id, uv_avg_x_var_id,             &
+             vq_avg_x_var_id
   save
 
   public :: Get_energetics, Get_spectra, energy, enstrophy, get_corrs,   &
-            init_get_energetics
+            init_get_energetics, init_get_spectra
 
   real                                      :: tvary0, tvarx0
   real,dimension(:),allocatable             :: stcor0,shcor0
@@ -261,7 +269,7 @@ contains
     use qg_tracers,  only: tracer_x, tracer_y, psi_stir, dzt, filter_t
     use qg_params,   only: dt,i,pi,F,Fe,kmax,nkx,nky,nz,nzt,                 &
                            bot_drag,top_drag,therm_drag,                     &
-                           time,cntr,uscale,vscale,use_forcing,                     &
+                           time,cntr,uscale,vscale,use_forcing,              &
                            use_tracer_x,use_tracer_y,                        &
                            quad_drag,surface_bc,filter_type,filter_type_t,   &
                            time_varying_mean,use_mean_grad_t
@@ -451,7 +459,147 @@ contains
 
   end function Get_energetics
 
-  !*************************************************************************
+  subroutine init_get_spectra()
+    !************************************************************************
+    ! Prepare spectra.nc file and variables for Get_spectra function
+    ! below to use
+    !************************************************************************
+    use io_tools,    only: Message
+    use nc_io_tools, only: create_file, enddef_file, register_variable,      &
+                           create_axis_time, create_axis_ktotal,             &
+                           create_axis_z, create_axis_custom,                &
+                           create_axis_lat
+    use qg_params,   only: do_aniso_spectra, uscale, vscale, use_forcing,    &
+                           nz, nzt, do_genm_spectra, therm_drag, bot_drag,   &
+                           top_drag, quad_drag, filter_type, do_xfer_spectra,&
+                           use_tracer_x, use_tracer_y, do_x_avgs,            &
+                           use_mean_grad_t
+                           
+
+    integer :: spectra_file_id, axis_time_id, axis_ktotal_id, &
+               axis_z_id, axis_zt_id, axis_m3_id, axis_lat_id
+
+    spectra_file_id = create_file('spectra.nc')
+    axis_time_id    = create_axis_time(spectra_file_id)
+    axis_z_id       = create_axis_z(spectra_file_id)
+    axis_zt_id      = create_axis_custom(spectra_file_id, 'ztracer', nzt)
+    axis_ktotal_id  = create_axis_ktotal(spectra_file_id)
+    axis_m3_id      = create_axis_custom(spectra_file_id, 'm3', nz**3)
+    axis_lat_id     = create_axis_lat(spectra_file_id)
+    
+    diagspec_time_var_id = register_variable(spectra_file_id, 'time', &
+                           (/axis_time_id/), .false.)
+    kes_var_id           = register_variable(spectra_file_id, 'kes',  &
+                           (/axis_ktotal_id, axis_z_id, axis_time_id/), .false.)
+    
+    if (do_aniso_spectra) then
+        kesx_var_id      = register_variable(spectra_file_id, 'kesx', &
+                           (/axis_ktotal_id, axis_z_id, axis_time_id/), .false.)
+        kesy_var_id      = register_variable(spectra_file_id, 'kesy', &
+                           (/axis_ktotal_id, axis_z_id, axis_time_id/), .false.)
+    endif
+
+    if (uscale/=0 .OR. vscale/=0) then
+        gens_var_id      = register_variable(spectra_file_id, 'gens', &
+                           (/axis_ktotal_id, axis_z_id, axis_time_id/), .false.)
+    endif 
+
+    if (use_forcing) then
+        gens_rmf_var_id  = register_variable(spectra_file_id, 'gens_rmf', &
+                           (/axis_ktotal_id, axis_z_id, axis_time_id/), .false.)
+    endif
+
+!for either single layer or multiple layers
+    if (bot_drag /= 0) then
+        bdms_var_id = register_variable(spectra_file_id, 'bdms', &
+                       (/axis_ktotal_id, axis_z_id, axis_time_id/), .false.)
+    endif
+
+    if (quad_drag /= 0) then
+        qdms_var_id = register_variable(spectra_file_id, 'qdms', &
+                       (/axis_ktotal_id, axis_z_id, axis_time_id/), .false.)
+    endif
+
+    if (trim(filter_type)/='none') then
+        filterms_var_id= register_variable(spectra_file_id, 'filterms', &
+                       (/axis_ktotal_id, axis_z_id, axis_time_id/), .false.)
+    endif
+
+    multilayer : if (nz>1) then
+        kems_var_id      = register_variable(spectra_file_id, 'kems', &
+                           (/axis_ktotal_id, axis_z_id, axis_time_id/), .false.)
+
+        if (do_aniso_spectra) then
+            kemsx_var_id = register_variable(spectra_file_id, 'kemsx', &
+                           (/axis_ktotal_id, axis_z_id, axis_time_id/), .false.)
+            kemsy_var_id = register_variable(spectra_file_id, 'kemsy', &
+                           (/axis_ktotal_id, axis_z_id, axis_time_id/), .false.)
+        endif
+
+        apems_var_id    = register_variable(spectra_file_id, 'apems', &
+                           (/axis_ktotal_id, axis_z_id, axis_time_id/), .false.)
+        apes_var_id     = register_variable(spectra_file_id, 'apes', &
+                           (/axis_ktotal_id, axis_z_id, axis_time_id/), .false.)
+
+        if (do_genm_spectra .AND. uscale/=0) then
+            genms_var_id= register_variable(spectra_file_id, 'genms', &
+                           (/axis_ktotal_id, axis_m3_id, axis_time_id/), .false.)
+        endif
+
+        if (therm_drag /= 0) then
+            thdms_var_id= register_variable(spectra_file_id, 'thdms', &
+                           (/axis_ktotal_id, axis_z_id, axis_time_id/), .false.)
+        endif
+
+        if (top_drag /= 0) then
+            tdms_var_id = register_variable(spectra_file_id, 'tdms', &
+                           (/axis_ktotal_id, axis_z_id, axis_time_id/), .false.)
+        endif
+
+        if (do_xfer_spectra) then
+            xferms_var_id= register_variable(spectra_file_id, 'xferms', &
+                           (/axis_ktotal_id, axis_m3_id, axis_time_id/), .false.)
+        endif
+
+    elseif (nz==1) then
+
+        if (do_xfer_spectra) then
+            energy_xfers_var_id= register_variable(spectra_file_id, 'energy_xfers', &
+                           (/axis_ktotal_id, axis_z_id, axis_time_id/), .false.)
+            enstrophy_xfers_var_id= register_variable(spectra_file_id, 'enstrophy_xfers', &
+                           (/axis_ktotal_id, axis_z_id, axis_time_id/), .false.)
+        endif
+
+    endif multilayer
+
+    if (use_tracer_x) then
+        txvars_var_id   = register_variable(spectra_file_id, 'txvars', &
+                           (/axis_ktotal_id, axis_zt_id, axis_time_id/), .false.)
+        if (use_mean_grad_t) then
+            txfluxs_var_id = register_variable(spectra_file_id, 'txfluxs', &
+                           (/axis_ktotal_id, axis_zt_id, axis_time_id/), .false.)
+        endif
+    endif
+
+    if (use_tracer_y) then
+        tyvars_var_id   = register_variable(spectra_file_id, 'tyvars', &
+                           (/axis_ktotal_id, axis_zt_id, axis_time_id/), .false.)
+        if (use_mean_grad_t) then
+            tyfluxs_var_id = register_variable(spectra_file_id, 'tyfluxs', &
+                           (/axis_ktotal_id, axis_zt_id, axis_time_id/), .false.)
+        endif
+    endif
+
+    if (do_x_avgs) then 
+        uv_avg_x_var_id = register_variable(spectra_file_id, 'uv_avg_x', &
+                           (/axis_z_id, axis_lat_id, axis_time_id/), .false.)
+        vq_avg_x_var_id = register_variable(spectra_file_id, 'vq_avg_x', &
+                           (/axis_z_id, axis_lat_id, axis_time_id/), .false.)
+    endif
+
+    call enddef_file(spectra_file_id)
+    call Message('spectra.nc initialized')
+  end subroutine init_get_spectra
 
   function Get_spectra(framein) result(dframe)
 
@@ -479,6 +627,7 @@ contains
                                do_xfer_spectra,do_x_avgs,do_genm_spectra,filter_type,     &
                                do_aniso_spectra, time_varying_mean
     use par_tools,       only: par_sum
+    use nc_io_tools,     only: write_nc
 
     integer,intent(in)                     :: framein
     integer                                :: dframe
@@ -491,6 +640,7 @@ contains
 
     dframe = framein+1 
     call Write_field(time,'diag2_time',dframe)     ! Track diagnostic-writes
+    call write_nc(diagspec_time_var_id, time)
 
     ! Allocate fields to collect spectral integration results and write to file 
     allocate(spec(1:kmax,1:nz));                                  spec=0.
@@ -514,6 +664,7 @@ contains
     spec = Ring_integral(field,kxv,kyv,kmax)
     call par_sum(spec)
     call Write_field(spec,'kes',dframe)
+    call write_nc(kes_var_id, spec)
 
     ! Spectra of energy along kx and ky axes if anisotropy expected
     if (do_aniso_spectra) then         ! KE(kx>0,0)
@@ -525,10 +676,12 @@ contains
        endif
        call par_sum(spec)
        call Write_field(spec(1:kmax,1:nz),'kesx',dframe)
+       call write_nc(kesx_var_id, spec)
        spec=0.
        if (kx_start==0) spec = transpose(field(1:nz,0,1:kmax))
        call par_sum(spec)            ! Adds zeros from all other pes
        call Write_field(spec,'kesy',dframe)
+       call write_nc(kesy_var_id, spec)
     endif   
 
     ! Calculate eddy generation spectra
@@ -539,6 +692,7 @@ contains
        if (vscale/=0) field = field - real(2*i*(dz*(shearv*psi-vbar*q)*(ky_*conjg(psi))))
        spec = Ring_integral(2*field,kxv,kyv,kmax)
        call Write_field(spec,'gens',dframe)
+       call write_nc(gens_var_id, spec)
     endif
     field = 0.; spec = 0.
     if (use_forcing) then        ! From random Markovian forcing
@@ -547,6 +701,7 @@ contains
        spec = Ring_integral(2*field,kxv,kyv,kmax)
        call par_sum(spec)
        call Write_field(spec,'gens_rmf',dframe)
+       call write_nc(gens_rmf_var_id, spec)
     endif
 
     ! Calculate BC diagnostics
@@ -560,6 +715,7 @@ contains
        spec = Ring_integral(field,kxv,kyv,kmax)
        call par_sum(spec)
        call Write_field(spec,'kems',dframe)
+       call write_nc(kems_var_id, spec)
 
        ! Spectra of energy along kx and ky axes if anisotropy expected
        if (do_aniso_spectra) then         ! KE(kx>0,0)
@@ -571,16 +727,19 @@ contains
           endif
           call par_sum(spec)
           call Write_field(spec(1:kmax,1:nz),'kemsx',dframe)
+          call write_nc(kemsx_var_id, spec)
           spec=0.
           if (kx_start==0) spec = transpose(field(1:nz,0,1:kmax))
           call par_sum(spec)            ! Adds zeros from all other pes
           call Write_field(spec,'kemsy',dframe)
+          call write_nc(kemsy_var_id, spec)
        endif
 
        field = real((kz**2)*psim*conjg(psim))    ! Modal APE
        spec = Ring_integral(field,kxv,kyv,kmax)
        call par_sum(spec)
        call Write_field(spec,'apems',dframe)
+       call write_nc(apems_var_id, spec)
 
        field=0.
        field(1:nz-1,:,:) = &                  ! Interface APE
@@ -590,6 +749,7 @@ contains
        spec(:,1:nz-1) = Ring_integral(field(1:nz-1,:,:),kxv,kyv,kmax)
        call par_sum(spec)
        call Write_field(spec,'apes',dframe)
+       call write_nc(apes_var_id, spec)
 
 ! Need to add vscale and check and calc
        if (do_genm_spectra.and.uscale/=0) then   ! Modal eddy generation
@@ -607,6 +767,7 @@ contains
           enddo
           call par_sum(spec_m3)
           call write_field(spec_m3,'genms',dframe)
+          call write_nc(genms_var_id, spec_m3)
           deallocate(spec_m3)
        endif
 
@@ -618,6 +779,7 @@ contains
           spec = Ring_integral(field,kxv,kyv,kmax)
           call par_sum(spec)
           call Write_field(spec,'thdms',dframe)
+          call write_nc(thdms_var_id, spec)
        endif
 
        ! checked          
@@ -629,6 +791,7 @@ contains
           spec = Ring_integral(field,kxv,kyv,kmax)
           call par_sum(spec)
           call Write_field(spec,'bdms',dframe)
+          call write_nc(bdms_var_id, spec)
        endif
     
        if (top_drag/=0) then     ! Modal top drag dissipation 
@@ -639,6 +802,7 @@ contains
           spec = Ring_integral(field,kxv,kyv,kmax)
           call par_sum(spec)
           call Write_field(spec,'tdms',dframe)
+          call write_nc(tdms_var_id, spec)
        endif
 
        if (quad_drag/=0) then     ! Modal quadratic drag dissipation 
@@ -649,6 +813,7 @@ contains
           spec = Ring_integral(field,kxv,kyv,kmax)
           call par_sum(spec)
           call Write_field(spec,'qdms',dframe)
+          call write_nc(qdms_var_id, spec)
        endif
 
        ! checked
@@ -659,6 +824,7 @@ contains
           spec = Ring_integral(field,kxv,kyv,kmax)
           call par_sum(spec)
           call Write_field(spec,'filterms',dframe)
+          call write_nc(filterms_var_id, spec)
        endif
 
        if (do_xfer_spectra) then         ! Internal transfer terms
@@ -679,6 +845,7 @@ contains
           enddo
           call par_sum(spec_m3)
           call Write_field(spec_m3,'xferms',dframe)
+          call write_nc(xferms_var_id, spec_m3)
           deallocate(jack,spec_m3)
        endif
        deallocate(psim)
@@ -706,6 +873,7 @@ contains
           spec = Ring_integral(field,kxv,kyv,kmax)
           call par_sum(spec)
           call Write_field(spec,'apes',dframe)
+          call write_nc(apes_var_id, spec)
        endif
 
        if (do_xfer_spectra) then
@@ -715,10 +883,12 @@ contains
           spec = Ring_integral(field,kxv,kyv,kmax)
           call par_sum(spec)
           call Write_field(spec,'energy_xfers',dframe)
+          call write_nc(energy_xfers_var_id, spec)
           field = -2*real(conjg(q)*jack)
           spec = Ring_integral(field,kxv,kyv,kmax)
           call par_sum(spec)
           call Write_field(spec,'enstrophy_xfers',dframe)
+          call write_nc(enstrophy_xfers_var_id, spec)
        endif
 
        if (bot_drag/=0) then     ! Bottom drag dissipation 
@@ -726,6 +896,7 @@ contains
           spec = Ring_integral(field,kxv,kyv,kmax)
           call par_sum(spec)
           call Write_field(spec,'bds',dframe)
+          call write_nc(bdms_var_id, spec)
        endif
 
        if (trim(filter_type)/='none') then    ! Filter dissipation
@@ -735,6 +906,7 @@ contains
           spec = Ring_integral(field,kxv,kyv,kmax)
           call par_sum(spec)
           call Write_field(spec,'filters',dframe)        
+          call write_nc(filterms_var_id, spec)
        endif
 
        if (quad_drag/=0) then      ! Quadratic drag dissipation
@@ -742,6 +914,7 @@ contains
           spec = Ring_integral(field,kxv,kyv,kmax)
           call par_sum(spec)
           call Write_field(spec,'qds',dframe)
+          call write_nc(qdms_var_id, spec)
        endif
 
     endif multilayer
@@ -757,11 +930,13 @@ contains
           spect = Ring_integral(fieldt,kxv,kyv,kmax)
           call par_sum(spect)
           call Write_field(spect,'txvars',dframe)
+          call write_nc(txvars_var_id, spect)
           if (use_mean_grad_t) then                       ! <tx'u'> vs. k
              fieldt = -2*real(dzt*tracer_x*conjg(i*ky_*psi_stir))
              spect = Ring_integral(fieldt,kxv,kyv,kmax)
              call par_sum(spect)
              call Write_field(spect,'txfluxs',dframe)
+             call write_nc(txfluxs_var_id, spect)
           endif
        endif
        if (use_tracer_y) then
@@ -769,11 +944,13 @@ contains
           spect = Ring_integral(fieldt,kxv,kyv,kmax)
           call par_sum(spect)
           call Write_field(spect,'tyvars',dframe)
+          call write_nc(tyvars_var_id, spect)
           if (use_mean_grad_t) then                       ! <ty'v'> vs. k
              fieldt = 2*real(dzt*tracer_y*conjg(i*kx_*psi_stir))
              spect = Ring_integral(fieldt,kxv,kyv,kmax)
              call par_sum(spect)
              call Write_field(spect,'tyfluxs',dframe)
+             call write_nc(tyfluxs_var_id, spect)
           endif
        endif
        deallocate(spect,fieldt)
@@ -783,17 +960,19 @@ contains
 
     ! checked
     if (do_x_avgs) then    ! Zonal averages 
-       allocate(xavg(ngrid,nz));             xavg=0.
+       allocate(xavg(nz,ngrid));             xavg=0.
        allocate(qg(nz,ny,ngrid));            qg=0.
        xavg=0.
        xavg(1:nz,1:ngrid)=sum(real(ug)*real(vg),2)/ngrid
        call par_sum(xavg)
        call Write_field(xavg,'uv_avg_x',dframe)
+       call write_nc(uv_avg_x_var_id, xavg)
        xavg=0.
        call Spec2grid(q,qg)
        xavg(1:nz,1:ngrid)= sum(real(vg)*real(qg),2)/ngrid ! <v'q'>
        call par_sum(xavg)
        call Write_field(xavg,'vq_avg_x',dframe)
+       call write_nc(vq_avg_x_var_id, xavg)
        deallocate(xavg,qg)
     endif
 

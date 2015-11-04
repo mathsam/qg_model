@@ -639,7 +639,6 @@ contains
     logical,save                           :: called_yet=.false.
 
     dframe = framein+1 
-    call Write_field(time,'diag2_time',dframe)     ! Track diagnostic-writes
     call write_nc(diagspec_time_var_id, time)
 
     ! Allocate fields to collect spectral integration results and write to file 
@@ -663,7 +662,6 @@ contains
     field = real(dz*(ksqd_*psi*conjg(psi)))
     spec = Ring_integral(field,kxv,kyv,kmax)
     call par_sum(spec)
-    call Write_field(spec,'kes',dframe)
     call write_nc(kes_var_id, spec)
 
     ! Spectra of energy along kx and ky axes if anisotropy expected
@@ -675,12 +673,10 @@ contains
           spec(1:kx_end,:) = transpose(field(:,1:kx_end,0))
        endif
        call par_sum(spec)
-       call Write_field(spec(1:kmax,1:nz),'kesx',dframe)
        call write_nc(kesx_var_id, spec)
        spec=0.
        if (kx_start==0) spec = transpose(field(1:nz,0,1:kmax))
        call par_sum(spec)            ! Adds zeros from all other pes
-       call Write_field(spec,'kesy',dframe)
        call write_nc(kesy_var_id, spec)
     endif   
 
@@ -691,7 +687,6 @@ contains
        if (uscale/=0) field = -real(2*i*(dz*(shearu*psi-ubar*q)*(kx_*conjg(psi))))
        if (vscale/=0) field = field - real(2*i*(dz*(shearv*psi-vbar*q)*(ky_*conjg(psi))))
        spec = Ring_integral(2*field,kxv,kyv,kmax)
-       call Write_field(spec,'gens',dframe)
        call write_nc(gens_var_id, spec)
     endif
     field = 0.; spec = 0.
@@ -700,7 +695,6 @@ contains
        if (nz>1) field(2:nz,:,:) = 0.
        spec = Ring_integral(2*field,kxv,kyv,kmax)
        call par_sum(spec)
-       call Write_field(spec,'gens_rmf',dframe)
        call write_nc(gens_rmf_var_id, spec)
     endif
 
@@ -714,7 +708,6 @@ contains
        field = real(ksqd_*psim*conjg(psim)) ! Modal KE
        spec = Ring_integral(field,kxv,kyv,kmax)
        call par_sum(spec)
-       call Write_field(spec,'kems',dframe)
        call write_nc(kems_var_id, spec)
 
        ! Spectra of energy along kx and ky axes if anisotropy expected
@@ -726,19 +719,16 @@ contains
              spec(1:kx_end,:) = transpose(field(:,1:kx_end,0))
           endif
           call par_sum(spec)
-          call Write_field(spec(1:kmax,1:nz),'kemsx',dframe)
           call write_nc(kemsx_var_id, spec)
           spec=0.
           if (kx_start==0) spec = transpose(field(1:nz,0,1:kmax))
           call par_sum(spec)            ! Adds zeros from all other pes
-          call Write_field(spec,'kemsy',dframe)
           call write_nc(kemsy_var_id, spec)
        endif
 
        field = real((kz**2)*psim*conjg(psim))    ! Modal APE
        spec = Ring_integral(field,kxv,kyv,kmax)
        call par_sum(spec)
-       call Write_field(spec,'apems',dframe)
        call write_nc(apems_var_id, spec)
 
        field=0.
@@ -748,7 +738,6 @@ contains
        spec=0.
        spec(:,1:nz-1) = Ring_integral(field(1:nz-1,:,:),kxv,kyv,kmax)
        call par_sum(spec)
-       call Write_field(spec,'apes',dframe)
        call write_nc(apes_var_id, spec)
 
 ! Need to add vscale and check and calc
@@ -766,7 +755,6 @@ contains
              enddo
           enddo
           call par_sum(spec_m3)
-          call write_field(spec_m3,'genms',dframe)
           call write_nc(genms_var_id, spec_m3)
           deallocate(spec_m3)
        endif
@@ -778,7 +766,6 @@ contains
           enddo
           spec = Ring_integral(field,kxv,kyv,kmax)
           call par_sum(spec)
-          call Write_field(spec,'thdms',dframe)
           call write_nc(thdms_var_id, spec)
        endif
 
@@ -790,7 +777,6 @@ contains
           enddo
           spec = Ring_integral(field,kxv,kyv,kmax)
           call par_sum(spec)
-          call Write_field(spec,'bdms',dframe)
           call write_nc(bdms_var_id, spec)
        endif
     
@@ -801,7 +787,6 @@ contains
           enddo
           spec = Ring_integral(field,kxv,kyv,kmax)
           call par_sum(spec)
-          call Write_field(spec,'tdms',dframe)
           call write_nc(tdms_var_id, spec)
        endif
 
@@ -812,7 +797,6 @@ contains
           enddo
           spec = Ring_integral(field,kxv,kyv,kmax)
           call par_sum(spec)
-          call Write_field(spec,'qdms',dframe)
           call write_nc(qdms_var_id, spec)
        endif
 
@@ -823,7 +807,6 @@ contains
           field = -2*real((field2d*(ksqd_+kz**2))*psim*conjg(psim))
           spec = Ring_integral(field,kxv,kyv,kmax)
           call par_sum(spec)
-          call Write_field(spec,'filterms',dframe)
           call write_nc(filterms_var_id, spec)
        endif
 
@@ -844,20 +827,10 @@ contains
              enddo
           enddo
           call par_sum(spec_m3)
-          call Write_field(spec_m3,'xferms',dframe)
           call write_nc(xferms_var_id, spec_m3)
           deallocate(jack,spec_m3)
        endif
        deallocate(psim)
-
-       ! Area averaged eddy PV flux as function of depth
-
-       uq = 2*sum(sum(real((-i*ky_*psi)*conjg(q)),2),2) 
-       call par_sum(uq)
-       call write_field(uq,'uq',dframe)
-       vq = 2*sum(sum(real((i*kx_*psi)*conjg(q)),2),2)
-       call par_sum(vq)
-       call write_field(vq,'vq',dframe)
 
        if (time_varying_mean) then
           call write_field(ubar,'ubar',dframe)
@@ -872,7 +845,6 @@ contains
           field = F*real(conjg(psi)*psi)
           spec = Ring_integral(field,kxv,kyv,kmax)
           call par_sum(spec)
-          call Write_field(spec,'apes',dframe)
           call write_nc(apes_var_id, spec)
        endif
 
@@ -882,12 +854,10 @@ contains
           field = -2*real(conjg(psi)*jack)
           spec = Ring_integral(field,kxv,kyv,kmax)
           call par_sum(spec)
-          call Write_field(spec,'energy_xfers',dframe)
           call write_nc(energy_xfers_var_id, spec)
           field = -2*real(conjg(q)*jack)
           spec = Ring_integral(field,kxv,kyv,kmax)
           call par_sum(spec)
-          call Write_field(spec,'enstrophy_xfers',dframe)
           call write_nc(enstrophy_xfers_var_id, spec)
        endif
 
@@ -895,7 +865,6 @@ contains
           field = -2*real(bot_drag*ksqd_*psi*conjg(psi))
           spec = Ring_integral(field,kxv,kyv,kmax)
           call par_sum(spec)
-          call Write_field(spec,'bds',dframe)
           call write_nc(bdms_var_id, spec)
        endif
 
@@ -905,7 +874,6 @@ contains
           field = -2*real(field2d*(ksqd_*psi*conjg(psi)))
           spec = Ring_integral(field,kxv,kyv,kmax)
           call par_sum(spec)
-          call Write_field(spec,'filters',dframe)        
           call write_nc(filterms_var_id, spec)
        endif
 
@@ -913,7 +881,6 @@ contains
           field = 2*real(dz(nz)*conjg(psi)*qdrag)
           spec = Ring_integral(field,kxv,kyv,kmax)
           call par_sum(spec)
-          call Write_field(spec,'qds',dframe)
           call write_nc(qdms_var_id, spec)
        endif
 
@@ -929,13 +896,11 @@ contains
           fieldt = real(dzt*tracer_x*conjg(tracer_x))     ! <t't'>
           spect = Ring_integral(fieldt,kxv,kyv,kmax)
           call par_sum(spect)
-          call Write_field(spect,'txvars',dframe)
           call write_nc(txvars_var_id, spect)
           if (use_mean_grad_t) then                       ! <tx'u'> vs. k
              fieldt = -2*real(dzt*tracer_x*conjg(i*ky_*psi_stir))
              spect = Ring_integral(fieldt,kxv,kyv,kmax)
              call par_sum(spect)
-             call Write_field(spect,'txfluxs',dframe)
              call write_nc(txfluxs_var_id, spect)
           endif
        endif
@@ -943,13 +908,11 @@ contains
           fieldt = real(dzt*tracer_y*conjg(tracer_y))     ! <t't'>
           spect = Ring_integral(fieldt,kxv,kyv,kmax)
           call par_sum(spect)
-          call Write_field(spect,'tyvars',dframe)
           call write_nc(tyvars_var_id, spect)
           if (use_mean_grad_t) then                       ! <ty'v'> vs. k
              fieldt = 2*real(dzt*tracer_y*conjg(i*kx_*psi_stir))
              spect = Ring_integral(fieldt,kxv,kyv,kmax)
              call par_sum(spect)
-             call Write_field(spect,'tyfluxs',dframe)
              call write_nc(tyfluxs_var_id, spect)
           endif
        endif
@@ -965,13 +928,11 @@ contains
        xavg=0.
        xavg(1:nz,1:ngrid)=sum(real(ug)*real(vg),2)/ngrid
        call par_sum(xavg)
-       call Write_field(xavg,'uv_avg_x',dframe)
        call write_nc(uv_avg_x_var_id, xavg)
        xavg=0.
        call Spec2grid(q,qg)
        xavg(1:nz,1:ngrid)= sum(real(vg)*real(qg),2)/ngrid ! <v'q'>
        call par_sum(xavg)
-       call Write_field(xavg,'vq_avg_x',dframe)
        call write_nc(vq_avg_x_var_id, xavg)
        deallocate(xavg,qg)
     endif

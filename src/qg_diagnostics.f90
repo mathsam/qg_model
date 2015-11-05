@@ -482,7 +482,9 @@ contains
     spectra_file_id = create_file('spectra.nc')
     axis_time_id    = create_axis_time(spectra_file_id)
     axis_z_id       = create_axis_z(spectra_file_id)
-    axis_zt_id      = create_axis_custom(spectra_file_id, 'ztracer', nzt)
+    if (use_tracer_x .OR. use_tracer_y) then
+        axis_zt_id      = create_axis_custom(spectra_file_id, 'ztracer', nzt)
+    endif
     axis_ktotal_id  = create_axis_ktotal(spectra_file_id)
     axis_m3_id      = create_axis_custom(spectra_file_id, 'm3', nz**3)
     axis_lat_id     = create_axis_lat(spectra_file_id)

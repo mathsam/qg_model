@@ -479,7 +479,7 @@ contains
 
     nc_file_id = file_info_list(file_id)%nc_file_id
     status = nf90_def_dim(nc_file_id, axis_name, axis_length, axis_dimid)
-    if (status /= nf90_noerr) call handle_err(status,"create custom axis error")
+    if (status /= nf90_noerr) call handle_err(status,"create custom axis error: "//axis_name)
 
     current_num_dims = file_info_list(file_id)%current_num_dims
     if(current_num_dims > MAX_NUM_DIMS) call axis_dim_exceed_err

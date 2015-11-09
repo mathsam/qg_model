@@ -20,7 +20,7 @@ set Files = ( `/bin/ls -1 ./RESTART/*` )
 if ( $$#Files > 0 ) then
     mv -f ./RESTART/* ./INPUT/
 
-    if ( $$restartNum < 100) then
+    if ( $$restartNum < 10) then
         msub ./runscript
         echo "restart a run"
     endif

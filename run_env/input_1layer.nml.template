@@ -1,18 +1,18 @@
  &run_params
  kmax = $kmax 
- nz = 2
+ nz = 1 
  F = $F
  beta = $beta
- strat_type = 'linear'
- surface_bc = 'rigid_lid'
- psi_init_type = 'spectral_m'
- uscale = 1.0
- ubar_type = 'linear'
+ psi_init_type = 'spectral'
  k_o  = 250 
  delk = 4 
  m_o  = 0 
- e_o  = 10.0 
- use_forcing = F 
+ e_o  = 0.1
+ use_forcing = T 
+ norm_forcing = T
+ forc_coef    = 1.
+ kf_min       = 249
+ kf_max       = 251
  filter_type   = 'hyperviscous'
  filter_exp = 4 
  bot_drag = $bot_drag
@@ -21,9 +21,6 @@
  do_energetics = .true.
  use_tracer_x = F 
  use_tracer_y = F 
- use_mean_grad_t = T
- filter_type_t = 'hyperviscous'
- filter_exp_t  = 4 
  total_counts = 50000
  write_step = 1000
  diag1_step = 1000

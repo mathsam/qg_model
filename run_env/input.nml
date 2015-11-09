@@ -1,5 +1,5 @@
  &run_params
- kmax = 1023
+ kmax = 511 
  nz = 2 
  F = 1583.14
  beta = 3957.86

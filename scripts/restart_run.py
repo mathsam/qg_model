@@ -1,7 +1,7 @@
-old_exp_name    = 'Nov4_Sc2.5_drag5e-1'
-new_exp_name    = 'Nov4_Sc2.5_drag5e-2' # this is the new experiment name
+old_exp_name    = 'Nov5_Sc2.5_drag5e-2'
+new_exp_name    = 'Nov5_Sc2.5_drag5e-3' # this is the new experiment name
 regex2match   = '\s+BOT_DRAG\s+='
-line2replacew = 'BOT_DRAG        =   1.98943678865000,'
+line2replacew = 'BOT_DRAG        =   0.397887357730000,'
 
 num_procs   = 64 
 walltime    = '01:30:00'
@@ -24,7 +24,8 @@ bk_dir  = os.path.join(f1u_dir,old_exp_name) + '/'
 if not os.path.exists(bk_dir):
     os.mkdir(bk_dir)
 shutil.copyfile(old_exp_dir + 'INPUT/restart.nc', bk_dir + 'restart.nc')
-shutil.copyfile(old_exp_dir + 'input.nml',   bk_dir + 'input.nml') 
+if os.path.isfile(old_exp_dir + 'input.nml'):
+    shutil.copyfile(old_exp_dir + 'input.nml',   bk_dir + 'input.nml') 
 shutil.copyfile(old_exp_dir + 'restart.nml', bk_dir + 'restart.nml')
 shutil.copyfile(old_exp_dir + 'runscript',   bk_dir + 'runscript')
 shutil.copyfile(old_exp_dir + 'transferScript', bk_dir + 'transferScript')

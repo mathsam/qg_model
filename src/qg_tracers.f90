@@ -185,7 +185,7 @@ contains
                                parameters_ok, cr, ci, io_root,                   &
                                frame, start_frame, start_frame_t, rewindfrm,     &
                                tracer_init_type, restarting,                     &
-                               nc_restartfile
+                               nc_restartfile, reset_tracer
     use qg_arrays,       only: ksqd_
     use qg_strat_and_shear, only: dz, vmode
     use transform_tools, only: Grid2spec
@@ -201,7 +201,7 @@ contains
     complex,dimension(:,:,:),allocatable         :: tracer_global
     real                                         :: tv
 
-    if (restarting) then
+    if (restarting .and. (.not. reset_tracer)) then
 
        allocate(tracer_global(1:nzt,-kmax-1:kmax,0:kmax)); tracer_global=0.
        if (.not.rewindfrm) then
@@ -254,6 +254,7 @@ contains
 
     end if
 
+    reset_tracer = .false.
     call par_sync
 
   end function  make_tracer

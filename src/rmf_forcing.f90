@@ -126,7 +126,7 @@ contains
     ! Local
     real                                      :: gamma=1.,gr=0.,fr=0.
 
-    where((ksqd_ > kf_min**2).and.(ksqd_ <= kf_max**2))
+    where((ksqd_ >= kf_min**2).and.(ksqd_ <= kf_max**2))
        force_o = lambda*force_o &
              + amp*sqrt(1-lambda**2)*cexp((i*2*pi)*Ran(idum,nkx,nky))
     endwhere

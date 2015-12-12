@@ -1,4 +1,5 @@
 import math
+import numpy as np
 
 def template2str(filename, mapping):
     """
@@ -35,22 +36,30 @@ f1_dir      = '/lustre/f1/Junyi.Chai/'
 exe_file    = '/lustre/f1/unswept/Junyi.Chai/qg_model_mpi/bld/qg_run.x'
 
 #--------------- experiment parameters -------------------
-exp_name    = 'Nov9_1layer_drag1e0'
+exp_name    = 'Dec12_kf64_drag1e-4'
 num_procs   = 64
 walltime    = '01:30:00'
 
 #resolution: default kmax=511
 kmax = 511 
+Rh       = 1./8. # Rhine scale
 F        = 0.0 
-beta     = 0.0 
-bot_drag = 1.0 
+beta     = 16.0*np.pi 
+kf_min   = 62 
+kf_max   = 66
+
+bot_drag = 1.*1e-4 
+e_o      = 1e-5
+
+epsilon = bot_drag* (beta)**2 * Rh**4
 #---------------------------------------------------------
 
 exp_dir = f1_dir + exp_name + '/'
 
-print "Domain size/Deformation radius = ", math.sqrt(4.*F)*2*math.pi 
 print "Bottom friction = ", bot_drag 
 print "Beta = ", beta 
+print "Rhine scale", Rh
+print "Epsilon = ", epsilon
 print "Expriment will be ran at ", exp_dir
 
 exp_dir = f1_dir + exp_name + '/'
@@ -61,7 +70,9 @@ input_template     = template_dir + 'input_1layer.nml.template'
 
 runscript_params = {'num_procs':num_procs, 'exp_name':exp_name, 'walltime':walltime}
 transfer_params  = {'exp_name':exp_name}
-input_params     = {'F':F, 'beta':beta, 'bot_drag':bot_drag, 'kmax':kmax}
+input_params     = {'F':F, 'beta':beta, 'bot_drag':bot_drag, 'kmax':kmax, 
+                    'epsilon':epsilon, 'kf_min':kf_min, 'kf_max':kf_max,
+                    'e_o':e_o}
 
 runscript_str = template2str(runscript_template, runscript_params)
 transfer_str  = template2str(transfer_template,  transfer_params)

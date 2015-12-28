@@ -35,7 +35,7 @@ f1_dir      = '/lustre/f1/Junyi.Chai/'
 exe_file    = '/lustre/f1/unswept/Junyi.Chai/qg_model_mpi/bld/qg_run.x'
 
 #--------------- experiment parameters -------------------
-exp_name    = 'Nov5_Sc2.5_drag5e-1'
+exp_name    = 'Nov5_Sc1.8_drag5e-1'
 num_procs   = 64
 walltime    = '01:30:00'
 
@@ -43,7 +43,8 @@ walltime    = '01:30:00'
 kmax = 511 
 domain_size_over_Ld = 500.
 nondim_drag         = 0.5
-criticality         = 2.5 
+criticality         = 1.8 
+#beta = 0.0
 F        = (domain_size_over_Ld/4./math.pi)**2
 beta     = 4*F/criticality 
 bot_drag = nondim_drag*math.sqrt(4.*F)

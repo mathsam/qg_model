@@ -1,10 +1,13 @@
-old_exp_name    = 'Nov5_Sc2.5_drag5e-2'
-new_exp_name    = 'Nov5_Sc2.5_drag5e-3' # this is the new experiment name
+old_exp_name    = 'Nov5_Sc1.8_drag5e-3'
+new_exp_name    = 'Nov5_Sc1.8_drag5e-4' # this is the new experiment name
+
+#match the line with regex `regex2match` and replace the entire line with
+#`line2replacew`
 regex2match   = '\s+BOT_DRAG\s+='
-line2replacew = 'BOT_DRAG        =   0.397887357730000,'
+line2replacew = 'BOT_DRAG        =  3.97887357730000E-2,'
 
 num_procs   = 64 
-walltime    = '01:30:00'
+walltime    = '02:00:00'
 
 f1_dir    = '/lustre/f1/Junyi.Chai/'
 f1u_dir   = '/lustre/f1/unswept/Junyi.Chai/RestartFiles/QG_model/2015/'

@@ -21,7 +21,6 @@
  do_spectra    = .false.
  do_energetics = .true.
  use_tracer_x = F 
- use_tracer_y = F 
  total_counts = 50000
  write_step = 1000
  diag1_step = 1000

@@ -36,22 +36,24 @@ f1_dir      = '/lustre/f1/Junyi.Chai/'
 exe_file    = '/lustre/f1/unswept/Junyi.Chai/qg_model_mpi/bld/qg_run.x'
 
 #--------------- experiment parameters -------------------
-exp_name    = 'Dec12_kf64_drag1e-4'
+exp_name    = 'Dec12_kf16_drag8e-4_m16'
 num_procs   = 64
-walltime    = '01:30:00'
+walltime    = '02:30:00'
 
 #resolution: default kmax=511
 kmax = 511 
 Rh       = 1./8. # Rhine scale
 F        = 0.0 
 beta     = 16.0*np.pi 
-kf_min   = 62 
-kf_max   = 66
+kf_min   = 14 
+kf_max   = 18 
 
-bot_drag = 1.*1e-4 
-e_o      = 1e-5
+bot_drag_base = 8.*1e-4 
+epsilon = bot_drag_base* (beta)**2 * Rh**4
+bot_drag = bot_drag_base*16
+e_o      = 1e-4
+rmf_norm_min = 1.e-7
 
-epsilon = bot_drag* (beta)**2 * Rh**4
 #---------------------------------------------------------
 
 exp_dir = f1_dir + exp_name + '/'
@@ -66,13 +68,13 @@ exp_dir = f1_dir + exp_name + '/'
 
 runscript_template = template_dir + 'runscript.template'
 transfer_template  = template_dir + 'transferScript.template'
-input_template     = template_dir + 'input_1layer.nml.template'
+input_template     = template_dir + 'input_1layer_wtracer.nml.template'
 
 runscript_params = {'num_procs':num_procs, 'exp_name':exp_name, 'walltime':walltime}
 transfer_params  = {'exp_name':exp_name}
 input_params     = {'F':F, 'beta':beta, 'bot_drag':bot_drag, 'kmax':kmax, 
                     'epsilon':epsilon, 'kf_min':kf_min, 'kf_max':kf_max,
-                    'e_o':e_o}
+                    'e_o':e_o, 'rmf_norm_min':rmf_norm_min}
 
 runscript_str = template2str(runscript_template, runscript_params)
 transfer_str  = template2str(transfer_template,  transfer_params)

@@ -141,11 +141,19 @@ contains
        else
           vbart = 0.
        endif
-    else
+    else if (nzt==nz) then
        dzt = dz
        vmodet = vmode
        ubart = ubar
        vbart = vbar
+    else
+       call Message('nzt < nz: less tracer levels than model levels') 
+       if (nzt == 1) then
+           vmodet(1:nzt,:) = 1.
+       else
+           call Message('nzt < nz and nzt is not 1 is not implemented', fatal='y')
+           parameters_ok = .false.
+       endif
     end if
 
     ! Initialize operator for implicit method if vertical diffusion turned on
@@ -313,18 +321,26 @@ contains
     use transform_tools,    only: jacob
     use numerics_lib,       only: diffz2
 
-    integer :: iz
+    integer :: iz, ix, iy
 
-    if (maxmode<nzt-1) then
+    if (maxmode<nz-1) then
        ! Stir tracer with modes 0 through maxmode
-       psim = layer2mode(psi,vmode,dz,maxmode)
-       psi_stir = mode2layer(psim,vmodet,maxmode)
+       if (nzt /= 1) then
+           psim = layer2mode(psi,vmode,dz,maxmode)
+           psi_stir = mode2layer(psim,vmodet,maxmode)
+       else
+           do iy = 1, size(psi, 3)
+             do ix = 1, size(psi, 2)
+             psi_stir(1,ix,iy) = dot_product(vmode(:,1)*dz, psi(:,ix,iy))
+             enddo
+           enddo
+       endif
     else
        psi_stir = psi
     endif
 
     if (use_tracer_x) then
-       if (nzt>nz) then
+       if (nzt /= nz) then
           do iz=1,nzt
              call Jacob(tracer_x(iz,:,:),psi_stir(iz,:,:),rhs_tx(iz,:,:))
           enddo
@@ -344,7 +360,7 @@ contains
     endif
 
     if (use_tracer_y) then
-       if (nzt>nz) then
+       if (nzt /= nz) then
           do iz=1,nzt
              call Jacob(tracer_y(iz,:,:),psi_stir(iz,:,:),rhs_ty(iz,:,:))
           enddo

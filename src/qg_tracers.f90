@@ -21,6 +21,7 @@ module qg_tracers            !-*-f90-*-
   complex,dimension(:,:,:),allocatable   :: psim, psi_stir
   real,   dimension(:,:),  allocatable   :: vmodet, filter_t, op_tracer
   real,   dimension(:),    allocatable   :: dzt, ubart, vbart, deltaz
+  real,   dimension(:),    allocatable   :: ubar_proj, vbar_proj !ubar projected to modes 1:maxmode
 
   public :: tracer_x, tracer_y, filter_t, dzt, psi_stir, &
             init_tracers, step_tracers
@@ -35,6 +36,7 @@ contains
     use io_tools,           only: message, read_field
     use qg_filter_tools,    only: init_filter
     use qg_strat_and_shear, only: dz, ubar, vbar, vmode
+    use strat_tools,        only: Layer2mode, Mode2layer
     use qg_params,          only: kx_start, kx_end, kmax, nz, nzt,    &
                                   cr, ci, parameters_ok, maxmode,     &
                                   uscale, vscale,                     &
@@ -51,6 +53,8 @@ contains
                                   vmodet_in_file,                     &
                                   io_root
     use par_tools,          only: par_bcast
+    real,   dimension(:),    allocatable   :: ubarm
+    
 
     call Message('Tracers on')
     call Message('Any following messages regarding filter parameters')
@@ -80,7 +84,18 @@ contains
     ! Init stirring fields
     allocate(psim    (1:nz ,kx_start:kx_end,0:kmax));         psim = 0.
     allocate(psi_stir(1:nzt,kx_start:kx_end,0:kmax));         psi_stir = 0.
-    
+
+    if (use_tracer_x .OR. use_tracer_y) then
+       allocate(ubar_proj(nz))
+       allocate(vbar_proj(nz))
+       allocate(ubarm(nz))
+       ubarm     = layer2mode(ubar, vmode, dz, maxmode)
+       ubar_proj = mode2layer(ubarm, vmode, maxmode)
+       ubarm     = layer2mode(vbar, vmode, dz, maxmode)
+       vbar_proj = mode2layer(ubarm, vmode, maxmode)
+       deallocate(ubarm)
+    endif    
+
     if (use_tracer_x) then
        allocate(tracer_x  (1:nzt,kx_start:kx_end,0:kmax));    tracer_x = 0.
        allocate(tracer_x_o(1:nzt,kx_start:kx_end,0:kmax));    tracer_x_o = 0.
@@ -301,7 +316,7 @@ contains
     integer :: iz
 
     if (maxmode<nzt-1) then
-       ! Stir tracer with modes 0 through maxmode-1
+       ! Stir tracer with modes 0 through maxmode
        psim = layer2mode(psi,vmode,dz,maxmode)
        psi_stir = mode2layer(psim,vmodet,maxmode)
     else
@@ -320,8 +335,8 @@ contains
 !       if (any(vbar/=0)) rhs_tx = rhs_tx - i*(ky_*(vbart*tracer_x))
        ! Note: above form does not take into account time varying mean state, when
        ! used, but below form does not allow higher res tracer.
-       if (any(ubar/=0)) rhs_tx = rhs_tx - i*(kx_*(ubar*tracer_x))
-       if (any(vbar/=0)) rhs_tx = rhs_tx - i*(ky_*(vbar*tracer_x))
+       if (any(ubar_proj/=0)) rhs_tx = rhs_tx - i*(kx_*(ubar_proj*tracer_x))
+       if (any(vbar_proj/=0)) rhs_tx = rhs_tx - i*(ky_*(vbar_proj*tracer_x))
        if (use_mean_grad_t) rhs_tx = rhs_tx + i*(ky_*psi_stir)
 !       if (kappa_v/=0) rhs_tx = rhs_tx + kappa_v*diffz2(tracer_x_o,dzt)
        if (kappa_h/=0) rhs_tx = rhs_tx - kappa_h*ksqd_*tracer_x_o
@@ -340,8 +355,8 @@ contains
 !       if (any(vbar/=0)) rhs_ty = rhs_ty - i*(ky_*(vbart*tracer_y))
        ! Note: above form does not take into account time varying mean state, when
        ! used, but below form does not allow higher res tracer.
-       if (any(ubar/=0)) rhs_ty = rhs_ty - i*(kx_*(ubar*tracer_y))
-       if (any(vbar/=0)) rhs_ty = rhs_ty - i*(ky_*(vbar*tracer_y))
+       if (any(ubar_proj/=0)) rhs_ty = rhs_ty - i*(kx_*(ubar_proj*tracer_y))
+       if (any(vbar_proj/=0)) rhs_ty = rhs_ty - i*(ky_*(vbar_proj*tracer_y))
        if (use_mean_grad_t) rhs_ty = rhs_ty - i*(kx_*psi_stir)
 !       if (kappa_v/=0) rhs_ty = rhs_ty + kappa_v*diffz2(tracer_y_o,dzt)
        if (kappa_h/=0) rhs_ty = rhs_ty - kappa_h*ksqd_*tracer_y_o

@@ -33,13 +33,14 @@ contains
                          start_frame, frame, d1frame, d2frame, rewindfrm,  & 
                          write_step, diag1_step, diag2_step,                   &
                          do_spectra, restarting, restart_step, nc_restartfile, &
-                         use_tracer_x, use_tracer_y
+                         use_tracer_x, use_tracer_y, nzt
     use nc_io_tools, only : create_file, enddef_file, register_variable,     &
                             create_axis_time, create_axis_kx, create_axis_ky,&
-                            create_axis_z, create_axis_real_and_imag
+                            create_axis_z, create_axis_real_and_imag,        &
+                            create_axis_custom
 
     integer :: axis_kx_id, axis_ky_id, axis_z_id, axis_time_id, axis_compl_id, &
-               history_file_id
+               axis_zt_id, history_file_id
 
     restart: if (restarting) then
 
@@ -118,16 +119,20 @@ contains
     axis_z_id       = create_axis_z(history_file_id)
     axis_compl_id   = create_axis_real_and_imag(history_file_id)
 
+    if (use_tracer_x .OR. use_tracer_y) then
+        axis_zt_id      = create_axis_custom(history_file_id, 'ztracer', nzt)
+    endif
+
     psi_var_id  = register_variable(history_file_id, "psi",  &
         (/axis_z_id, axis_kx_id, axis_ky_id, axis_compl_id, axis_time_id/), .true.)
 
     if (use_tracer_x) tracerx_var_id = &
                   register_variable(history_file_id, "tracer_x",  &
-        (/axis_z_id, axis_kx_id, axis_ky_id, axis_compl_id, axis_time_id/), .true.)
+        (/axis_zt_id, axis_kx_id, axis_ky_id, axis_compl_id, axis_time_id/), .true.)
 
     if (use_tracer_y) tracery_var_id = &
                   register_variable(history_file_id, "tracer_y",  &
-        (/axis_z_id, axis_kx_id, axis_ky_id, axis_compl_id, axis_time_id/), .true.)
+        (/axis_zt_id, axis_kx_id, axis_ky_id, axis_compl_id, axis_time_id/), .true.)
 
     time_var_id = register_variable(history_file_id, "time", &
         (/axis_time_id/), .false.)
@@ -190,13 +195,14 @@ contains
 
   subroutine init_write_restarts()
     use qg_params,   only : use_tracer_x, use_tracer_y, use_forcing,         &
-                            nc_restartfile  
+                            nc_restartfile, nzt
     use nc_io_tools, only : create_file, enddef_file, register_variable,     &
                             create_axis_time, create_axis_kx, create_axis_ky,&
-                            create_axis_z, create_axis_real_and_imag
+                            create_axis_z, create_axis_real_and_imag,        &
+                            create_axis_custom
     use io_tools,    only : Message
     integer :: axis_kx_id, axis_ky_id, axis_z_id, axis_time_id, axis_compl_id, &
-               restart_file_id
+               axis_zt_id, restart_file_id
 
     ! although in this model, restart file only contains one time frame,
     ! we still need to create time axis as that is required by nc_io_tools
@@ -208,16 +214,20 @@ contains
     axis_z_id       = create_axis_z(restart_file_id)
     axis_compl_id   = create_axis_real_and_imag(restart_file_id)
 
+    if (use_tracer_x .OR. use_tracer_y) then
+        axis_zt_id      = create_axis_custom(restart_file_id, 'ztracer', nzt)
+    endif
+
     restart_psi_var_id = register_variable(restart_file_id, "psi",  &
       (/axis_z_id, axis_kx_id, axis_ky_id, axis_compl_id, axis_time_id/), .true.)
 
     if (use_tracer_x) restart_tracerx_var_id = &
                   register_variable(restart_file_id, "tracer_x",  &
-      (/axis_z_id, axis_kx_id, axis_ky_id, axis_compl_id, axis_time_id/), .true.)
+      (/axis_zt_id, axis_kx_id, axis_ky_id, axis_compl_id, axis_time_id/), .true.)
 
     if (use_tracer_y) restart_tracery_var_id = &
                   register_variable(restart_file_id, "tracer_y",  &
-      (/axis_z_id, axis_kx_id, axis_ky_id, axis_compl_id, axis_time_id/), .true.)
+      (/axis_zt_id, axis_kx_id, axis_ky_id, axis_compl_id, axis_time_id/), .true.)
 
     ! random forcing does not have z dimension but is only 2d
     if (use_forcing) restart_force_var_id    = &

@@ -13,6 +13,16 @@ module strat_tools
   private
   save
 
+  interface layer2mode
+    module procedure layer2mode_1d
+    module procedure layer2mode_3d
+  end interface
+
+  interface mode2layer
+    module procedure mode2layer_1d
+    module procedure mode2layer_3d
+  end interface 
+
   public ::  strat_params, make_strat, get_z,           &
              get_vmodes, get_tripint, layer2mode, mode2layer
 
@@ -337,7 +347,7 @@ contains
 
   !*********************************************************************
 
-  function Layer2mode(f,vmode,dz,maxmode) result(fm)
+  function Layer2mode_3d(f,vmode,dz,maxmode) result(fm)
 
     !************************************************************************
     ! Project layered field onto vertical modes - third index
@@ -366,11 +376,11 @@ contains
 
     if (mmax<nz) fm(mmax+1:nz,:,:) = 0
 
-  end function Layer2mode
+  end function Layer2mode_3d
 
   !*********************************************************************
 
-  function Mode2layer(fm,vmode,maxmode) result(f)
+  function Mode2layer_3d(fm,vmode,maxmode) result(f)
 
     !************************************************************************
     ! Project modal field onto layers - third index will now
@@ -394,7 +404,58 @@ contains
        enddo
     enddo
 
-  end function Mode2layer
+  end function Mode2layer_3d
+
+  !*********************************************************************
+
+  function Layer2mode_1d(f,vmode,dz,maxmode) result(fm)
+
+    !************************************************************************
+    ! Project layered field onto vertical modes
+    !************************************************************************
+
+    real,dimension(:),intent(in)              :: f
+    real,dimension(size(f,1))                 :: fm
+    real,dimension(:,:),intent(in)               :: vmode
+    real,dimension(size(f,1)),intent(in)         :: dz
+    integer,intent(in),optional                  :: maxmode
+    integer                                      :: n,nz,mmax
+
+    nz = size(f,1)
+    mmax = nz
+
+    if (present(maxmode)) mmax = maxmode+1  ! We init maxmode as a BC mode #, 0:nzt-1
+
+    do n = 1,mmax
+       fm(n) = dot_product((vmode(:,n)*dz),f)
+    enddo
+
+    if (mmax<nz) fm(mmax+1:nz) = 0
+
+  end function Layer2mode_1d
+
+  !*********************************************************************
+
+  function Mode2layer_1d(fm,vmode,maxmode) result(f)
+
+    !************************************************************************
+    ! Project modal field onto layers 
+    !************************************************************************
+
+    real,dimension(:),intent(in)                           :: fm
+    real,dimension(:,:),  intent(in)                       :: vmode
+    real,dimension(size(vmode,1))                          :: f
+    integer,intent(in),optional                            :: maxmode
+    integer                                                :: nz, mmax
+
+    nz = size(vmode,2)
+    mmax = nz
+
+    if (present(maxmode)) mmax = maxmode+1  ! We init maxmode as a BC mode #, 0:nzt-1
+
+    f(:) = matmul(vmode(:,1:mmax),fm(1:mmax))
+
+  end function Mode2layer_1d
 
 end module strat_tools
 

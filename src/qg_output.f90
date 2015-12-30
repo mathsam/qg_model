@@ -11,9 +11,12 @@ module qg_output
 
   implicit none
   private
-  integer :: psi_var_id, tracerx_var_id, tracery_var_id, time_var_id
+  integer :: psi_var_id, tracerx_var_id, tracery_var_id, time_var_id, &
+             tracerbt_var_id
   integer :: restart_psi_var_id, restart_tracerx_var_id,   &
-             restart_tracery_var_id, restart_force_var_id
+             restart_tracery_var_id, restart_force_var_id, &
+             restart_tracerbt_var_id
+  complex,dimension(:,:,:),allocatable  :: tracer_bt_global
   save
 
   public :: init_counters, write_restarts, write_snapshots
@@ -33,14 +36,14 @@ contains
                          start_frame, frame, d1frame, d2frame, rewindfrm,  & 
                          write_step, diag1_step, diag2_step,                   &
                          do_spectra, restarting, restart_step, nc_restartfile, &
-                         use_tracer_x, use_tracer_y, nzt
+                         use_tracer_x, use_tracer_y, use_tracer_bt, nzt, kmax
     use nc_io_tools, only : create_file, enddef_file, register_variable,     &
                             create_axis_time, create_axis_kx, create_axis_ky,&
                             create_axis_z, create_axis_real_and_imag,        &
                             create_axis_custom
 
     integer :: axis_kx_id, axis_ky_id, axis_z_id, axis_time_id, axis_compl_id, &
-               axis_zt_id, history_file_id
+               axis_zt_id, history_file_id, axis_bt_id
 
     restart: if (restarting) then
 
@@ -123,6 +126,10 @@ contains
         axis_zt_id      = create_axis_custom(history_file_id, 'ztracer', nzt)
     endif
 
+    if (use_tracer_bt) then
+        axis_bt_id      = create_axis_custom(history_file_id, 'barotropic_mode', 1)
+    endif
+
     psi_var_id  = register_variable(history_file_id, "psi",  &
         (/axis_z_id, axis_kx_id, axis_ky_id, axis_compl_id, axis_time_id/), .true.)
 
@@ -134,6 +141,10 @@ contains
                   register_variable(history_file_id, "tracer_y",  &
         (/axis_zt_id, axis_kx_id, axis_ky_id, axis_compl_id, axis_time_id/), .true.)
 
+    if (use_tracer_bt) tracerbt_var_id = &
+                  register_variable(history_file_id, "tracer_bt",  &
+        (/axis_bt_id, axis_kx_id, axis_ky_id, axis_compl_id, axis_time_id/), .true.)
+
     time_var_id = register_variable(history_file_id, "time", &
         (/axis_time_id/), .false.)
 
@@ -141,6 +152,9 @@ contains
 
     call Message("history.nc initialized")
 
+    if (use_tracer_bt) then
+        allocate(tracer_bt_global(1:1,-kmax-1:kmax,0:kmax))
+    endif
   end subroutine Init_counters
    
   !*********************************************************************
@@ -153,10 +167,10 @@ contains
 
     use io_tools,    only: Message
     use qg_params,   only: kmax, nz, nzt,                 &
-                           use_tracer_x, use_tracer_y,    &
+                           use_tracer_x, use_tracer_y, use_tracer_bt, &
                            time, io_root
     use qg_arrays,   only: psi
-    use qg_tracers,  only: tracer_x, tracer_y
+    use qg_tracers,  only: tracer_x, tracer_y, tracer_bt
     use par_tools,   only: par_gather, processor_id, par_sync
     use nc_io_tools, only: write_nc
 
@@ -183,7 +197,14 @@ contains
           call par_gather(tracer_y,tracer_global,io_root)
           call write_nc(tracery_var_id, tracer_global(:,-kmax:kmax,:))
        endif
+
        deallocate(tracer_global)
+   endif
+
+   if (use_tracer_bt) then
+      tracer_bt_global = 0.
+      call par_gather(tracer_bt,tracer_bt_global,io_root)
+      call write_nc(tracerbt_var_id, tracer_bt_global(:,-kmax:kmax,:))
    endif
 
    call write_nc(time_var_id, time)
@@ -194,15 +215,15 @@ contains
   !*********************************************************************
 
   subroutine init_write_restarts()
-    use qg_params,   only : use_tracer_x, use_tracer_y, use_forcing,         &
-                            nc_restartfile, nzt
+    use qg_params,   only : use_tracer_x, use_tracer_y, use_tracer_bt,       &
+                            use_forcing, nc_restartfile, nzt
     use nc_io_tools, only : create_file, enddef_file, register_variable,     &
                             create_axis_time, create_axis_kx, create_axis_ky,&
                             create_axis_z, create_axis_real_and_imag,        &
                             create_axis_custom
     use io_tools,    only : Message
     integer :: axis_kx_id, axis_ky_id, axis_z_id, axis_time_id, axis_compl_id, &
-               axis_zt_id, restart_file_id
+               axis_zt_id, axis_bt_id, restart_file_id
 
     ! although in this model, restart file only contains one time frame,
     ! we still need to create time axis as that is required by nc_io_tools
@@ -213,6 +234,10 @@ contains
     axis_ky_id      = create_axis_ky(restart_file_id)
     axis_z_id       = create_axis_z(restart_file_id)
     axis_compl_id   = create_axis_real_and_imag(restart_file_id)
+
+    if (use_tracer_bt) then
+        axis_bt_id      = create_axis_custom(restart_file_id, 'barotropic_mode', 1)
+    endif
 
     if (use_tracer_x .OR. use_tracer_y) then
         axis_zt_id      = create_axis_custom(restart_file_id, 'ztracer', nzt)
@@ -228,6 +253,10 @@ contains
     if (use_tracer_y) restart_tracery_var_id = &
                   register_variable(restart_file_id, "tracer_y",  &
       (/axis_zt_id, axis_kx_id, axis_ky_id, axis_compl_id, axis_time_id/), .true.)
+
+    if (use_tracer_bt) restart_tracerbt_var_id = &
+                  register_variable(restart_file_id, "tracer_bt",  &
+      (/axis_bt_id, axis_kx_id, axis_ky_id, axis_compl_id, axis_time_id/), .true.)
 
     ! random forcing does not have z dimension but is only 2d
     if (use_forcing) restart_force_var_id    = &
@@ -249,11 +278,11 @@ contains
     use io_tools,    only: Message
     use qg_params,   only: kmax,nz,nzt,                             &
                            time,                                    &
-                           use_tracer_x, use_tracer_y,              &
+                           use_tracer_x,use_tracer_y,use_tracer_bt, &
                            use_forcing,                             &
                            Write_parameters, io_root
     use qg_arrays,   only: psi
-    use qg_tracers,  only: tracer_x, tracer_y
+    use qg_tracers,  only: tracer_x, tracer_y, tracer_bt
     use rmf_forcing, only: force_o
     use par_tools,   only: par_gather
     use nc_io_tools, only: write_nc
@@ -286,6 +315,11 @@ contains
           call write_nc(restart_tracery_var_id, tracer_global(:,-kmax:kmax,:))
        endif
        deallocate(tracer_global)
+    endif
+
+    if (use_tracer_bt) then
+        call par_gather(tracer_bt,tracer_bt_global,io_root)
+        call write_nc(restart_tracerbt_var_id, tracer_bt_global(:,-kmax:kmax,:))
     endif
 
     if (use_forcing) then

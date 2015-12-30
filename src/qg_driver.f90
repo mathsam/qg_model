@@ -41,7 +41,7 @@ program qg_driver
   if (use_forcing) call Init_rmf_forcing
   if (use_topo)    call Init_topo
   call Init_streamfunction
-  if (use_tracer_x.or.use_tracer_y) call Init_tracers  ! requires psi
+  if (use_tracer_x.or.use_tracer_y.or.use_tracer_bt) call Init_tracers  ! requires psi
   call Get_pv                    ! below
 
   if (sponge_rate > 0.) then
@@ -90,7 +90,7 @@ program qg_driver
      call Get_rhs
      if (time_varying_mean) call Step_mean_UV
 
-     if (use_tracer_x.or.use_tracer_y) call step_tracers
+     if (use_tracer_x.or.use_tracer_y.or.use_tracer_bt) call step_tracers
 
      ! Update clock
      time = time + dt 

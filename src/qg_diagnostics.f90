@@ -17,8 +17,9 @@ module qg_diagnostics
              filter_rate_var_id, bd_rate_var_id, qd_rate_var_id,         &
              td_rate_var_id, gen_rmf_rate_var_id, ape_var_id,            &
              thd_rate_var_id, gen_bci_rate_var_id, filter_rate_tx_var_id,&
-             tvarx_var_id, tvary_var_id,                                 &
+             tvarx_var_id, tvary_var_id,tvarbt_var_id,                   &
              gen_tg_tx_var_id, filter_rate_ty_var_id, gen_tg_ty_var_id,  &
+             gen_tg_tbt_var_id, filter_rate_tbt_var_id,                  &
              eddy_time_var_id
   integer :: diagspec_time_var_id, kes_var_id, kesx_var_id, kesy_var_id, &
              gens_var_id, gens_rmf_var_id, kems_var_id, kemsx_var_id,    &
@@ -33,7 +34,7 @@ module qg_diagnostics
   public :: Get_energetics, Get_spectra, energy, enstrophy, get_corrs,   &
             init_get_energetics, init_get_spectra
 
-  real                                      :: tvary0, tvarx0
+  real                                      :: tvary0, tvarx0, tvarbt0
   real,dimension(:),allocatable             :: stcor0,shcor0
   complex,dimension(:,:,:),allocatable      :: psi0
 
@@ -149,6 +150,7 @@ contains
     use io_tools,    only: Message
     use qg_params,   only: bot_drag,top_drag,therm_drag,                     &
                            use_forcing, use_tracer_x,use_tracer_y,           &
+                           use_tracer_bt,                                    &
                            quad_drag,surface_bc,filter_type,filter_type_t,   &
                            time_varying_mean,use_mean_grad_t,                &
                            nz, F
@@ -243,6 +245,21 @@ contains
         endif
     endif
 
+    if (use_tracer_bt) then
+        tvarbt_var_id = register_variable(energetics_file_id, "tvarbt", &
+                                    (/axis_time_id/), .false.)
+
+        if(trim(filter_type_t)/='none') then
+            filter_rate_tbt_var_id = register_variable(energetics_file_id, "filter_rate_tbt", &
+                                    (/axis_time_id/), .false.)
+        endif
+
+        if (use_mean_grad_t) then
+            gen_tg_tbt_var_id = register_variable(energetics_file_id, "gen_tg_tbt", &
+                                    (/axis_time_id/), .false.)
+        endif
+    endif
+
     eddy_time_var_id = register_variable(energetics_file_id, "eddy_time", &
                                     (/axis_time_id/), .false.)
 
@@ -266,11 +283,12 @@ contains
     use qg_arrays,   only: ksqd_, kx_, ky_, psi, q, qdrag, filter
     use rmf_forcing, only: force_o, get_gen_rmf_rate
     use qg_strat_and_shear, only: dz,drho,shearu,shearv,ubar,vbar
-    use qg_tracers,  only: tracer_x, tracer_y, psi_stir, dzt, filter_t
+    use qg_tracers,  only: tracer_x, tracer_y, tracer_bt, psi_stir, psi_bt_stir, &
+                           dzt, filter_t
     use qg_params,   only: dt,i,pi,F,Fe,kmax,nkx,nky,nz,nzt,                 &
                            bot_drag,top_drag,therm_drag,                     &
                            time,cntr,uscale,vscale,use_forcing,              &
-                           use_tracer_x,use_tracer_y,                        &
+                           use_tracer_x,use_tracer_y,use_tracer_bt,          &
                            quad_drag,surface_bc,filter_type,filter_type_t,   &
                            time_varying_mean,use_mean_grad_t
     use qg_filter_tools, only: get_filter_rate
@@ -284,9 +302,11 @@ contains
     real               :: ke=0., ens=0., ape=0., dedt=0.
     real               :: gen_bci_rate=0., gen_rmf_rate=0., thd_rate=0.
     real               :: bd_rate=0., qd_rate=0., filter_rate=0.
-    real               :: filter_rate_ty=0., filter_rate_tx=0., filter_rate_m=0.
-    real               :: td_rate=0.,eddy_time=0.,tvary=0.,tvarx=0.,zeta_rms=0.
-    real               :: gen_tg_ty=0., gen_tg_tx=0.
+    real               :: filter_rate_ty=0., filter_rate_tx=0., filter_rate_m=0., &
+                          filter_rate_tbt=0.
+    real               :: td_rate=0.,eddy_time=0.,tvary=0.,tvarx=0.,tvarbt=0.,&
+                          zeta_rms=0.
+    real               :: gen_tg_ty=0., gen_tg_tx=0., gen_tg_tbt=0.
     real               :: gen_tg_m=0.,tmoi=0.,gen_div_m=0.,foo=0.
     real               :: meanke=0.
     logical,save       :: called_yet=.false.
@@ -398,6 +418,7 @@ contains
           call write_nc(gen_tg_tx_var_id, gen_tg_tx)
        endif
     endif
+
     if (use_tracer_y) then
        tvary = sum(dzt*tracer_y*conjg(tracer_y))
        call par_sum(tvary)
@@ -415,7 +436,22 @@ contains
           call write_nc(gen_tg_ty_var_id, gen_tg_ty)
        endif
     endif
-       
+
+    if (use_tracer_bt) then
+       tvarbt = sum(tracer_bt*conjg(tracer_bt))
+       call par_sum(tvarbt)
+       call write_nc(tvarbt_var_id, tvarbt)
+       if (trim(filter_type_t)/='none') then
+          filter_rate_tbt = -get_filter_rate(tracer_bt,tracer_bt,filter_t,(/1./),dt)
+          call write_nc(filter_rate_tbt_var_id, filter_rate_tbt)
+       endif
+       if (use_mean_grad_t) then
+          gen_tg_tbt = - 2*sum(real(tracer_bt*conjg(i*kx_*psi_bt_stir)))
+          call par_sum(gen_tg_tbt)
+          call write_nc(gen_tg_tbt_var_id, gen_tg_tbt)
+       endif
+    endif      
+
     zeta_rms = 2*sum( dz*(ksqd_**2*psi*conjg(psi)) )
     call par_sum(zeta_rms)
     eddy_time = 2*pi/sqrt(zeta_rms)
@@ -453,6 +489,14 @@ contains
        if (.not.called_yet) tvary0 = tvary
        if (.not.ieee_is_finite(tvary)) call Message('INF or NAN in tvary - quitting!',fatal='y')
        tvary0 = tvary
+    endif
+    if (use_tracer_bt) then
+       call Message('tbt_variance     =',r_tag=tvarbt)
+       call Message('tbt_var_gen      =',r_tag=gen_tg_tbt)
+       call Message('tbt_var_dissip   =',r_tag=filter_rate_tbt)
+       if (.not.called_yet) tvarbt0 = tvarbt
+       if (.not.ieee_is_finite(tvarbt)) call Message('INF or NAN in tvarbt - quitting!',fatal='y')
+       tvarbt0 = tvarbt
     endif
 
     called_yet = .true.
@@ -620,7 +664,8 @@ contains
     use rmf_forcing,     only: force_o
     use qg_strat_and_shear, only: dz,drho,shearu,shearv,ubar,vbar,                        &
                                   tripint, um, vm, vmode, kz
-    use qg_tracers,      only: tracer_x, tracer_y, psi_stir, dzt, filter_t
+    use qg_tracers,      only: tracer_x, tracer_y, psi_stir, psi_bt_stir, &
+                               dzt, filter_t
     use qg_params,       only: i,pi,F,Fe,                                                 &
                                ngrid,kmax,nkx,kx_start,kx_end,ny,nky,ngrid,nz,nzt,        &
                                time,dt,cntr,bot_drag,top_drag,therm_drag,quad_drag,       &

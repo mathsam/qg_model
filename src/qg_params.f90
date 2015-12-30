@@ -135,6 +135,7 @@ module qg_params                   !-*-f90-*-
 
   logical                 :: use_tracer_x  = .false.   ! Calc tracers
   logical                 :: use_tracer_y  = .false.   ! Calc tracers
+  logical                 :: use_tracer_bt = .false.
   logical                 :: use_mean_grad_t=.false.   ! Use mean trcr gradient
   logical                 :: reset_tracer=.false. !if restart from restart.nc. Set to .true. if restart.nc does not contain tracer. This parameter setting will not be carried to restart.nml but will always be outputed as .false. in restart.nml other than be manually edited
   character(20)           :: tracer_init_type = ''     ! Initial tracer type
@@ -148,6 +149,7 @@ module qg_params                   !-*-f90-*-
   real                    :: kappa_h       = 0.        ! Laplacian diffusivity
   character(85)           :: tracer_y_init_file = ''   ! Initial tracer field
   character(85)           :: tracer_x_init_file = ''   ! Initial tracer field
+  character(85)           :: tracer_bt_init_file= ''
   character(85)           :: ubart_in_file  = ''       ! For hi z res tracer 
   character(85)           :: vbart_in_file  = ''       ! For hi z res tracer 
   character(85)           :: dzt_in_file    = ''       ! "
@@ -223,7 +225,7 @@ module qg_params                   !-*-f90-*-
   logical                 :: rewindfrm         = .false.
   logical                 :: start
   integer                 :: cnt = 1, call_q=0, call_b=0
-  integer                 :: call_ty=0, call_tx=0, call_U=0, call_V=0
+  integer                 :: call_ty=0, call_tx=0, call_U=0, call_V=0, call_tbt=0
 
   ! Parameters that are set by FFTW / par_tools if MPI is used
 
@@ -292,7 +294,8 @@ module qg_params                   !-*-f90-*-
   namelist/run_params/forc_coef,forc_corr,kf_min,kf_max,z_force
 
   ! Tracer
-  namelist/run_params/use_tracer_x,use_tracer_y,tracer_init_type, reset_tracer
+  namelist/run_params/use_tracer_x,use_tracer_y,tracer_init_type,reset_tracer, &
+                      use_tracer_bt
   namelist/run_params/use_mean_grad_t,kappa_v,kappa_h
   namelist/run_params/nzt,maxmode
   namelist/run_params/filter_type_t,filter_exp_t,k_cut_t,filt_tune_t

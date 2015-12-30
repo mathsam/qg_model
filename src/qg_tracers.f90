@@ -17,13 +17,15 @@ module qg_tracers            !-*-f90-*-
 
   complex,dimension(:,:,:),allocatable   :: tracer_y, tracer_y_o
   complex,dimension(:,:,:),allocatable   :: tracer_x, tracer_x_o
-  complex,dimension(:,:,:),allocatable   :: rhs_tx, rhs_ty
-  complex,dimension(:,:,:),allocatable   :: psim, psi_stir
+  complex,dimension(:,:,:),allocatable   :: tracer_bt,tracer_bt_o !tracer advected by barotropic flow
+  complex,dimension(:,:,:),allocatable   :: rhs_tx, rhs_ty, rhs_tbt
+  complex,dimension(:,:,:),allocatable   :: psim, psi_stir, psi_bt_stir
   real,   dimension(:,:),  allocatable   :: vmodet, filter_t, op_tracer
   real,   dimension(:),    allocatable   :: dzt, ubart, vbart, deltaz
   real,   dimension(:),    allocatable   :: ubar_proj, vbar_proj !ubar projected to modes 1:maxmode
+  real,   dimension(:),    allocatable   :: vmode_x_dz
 
-  public :: tracer_x, tracer_y, filter_t, dzt, psi_stir, &
+  public :: tracer_x, tracer_y, tracer_bt, filter_t, dzt, psi_stir, psi_bt_stir, &
             init_tracers, step_tracers
             
 contains
@@ -42,8 +44,10 @@ contains
                                   uscale, vscale,                     &
                                   kappa_v,                            &
                                   use_tracer_x, use_tracer_y,         &
+                                  use_tracer_bt,                      &
                                   tracer_x_init_file,                 & 
                                   tracer_y_init_file,                 &
+                                  tracer_bt_init_file,                &
                                   filter_type_t, filter_exp_t,        &
                                   filt_tune_t, dealiasing_t,          &
                                   k_cut_t,                            &
@@ -51,7 +55,8 @@ contains
                                   ubart_in_file,                      & 
                                   vbart_in_file,                      & 
                                   vmodet_in_file,                     &
-                                  io_root
+                                  io_root,                            &
+                                  reset_tracer
     use par_tools,          only: par_bcast
     real,   dimension(:),    allocatable   :: ubarm
     
@@ -84,6 +89,7 @@ contains
     ! Init stirring fields
     allocate(psim    (1:nz ,kx_start:kx_end,0:kmax));         psim = 0.
     allocate(psi_stir(1:nzt,kx_start:kx_end,0:kmax));         psi_stir = 0.
+    allocate(psi_bt_stir (1,kx_start:kx_end,0:kmax));         psi_bt_stir = 0.
 
     if (use_tracer_x .OR. use_tracer_y) then
        allocate(ubar_proj(nz))
@@ -96,12 +102,23 @@ contains
        deallocate(ubarm)
     endif    
 
+    if (use_tracer_bt) then
+       allocate(vmode_x_dz(nz))
+       vmode_x_dz = vmode(:,1)*dz
+       allocate(tracer_bt  (1,kx_start:kx_end,0:kmax));    tracer_bt   = 0.
+       allocate(tracer_bt_o(1,kx_start:kx_end,0:kmax));    tracer_bt_o = 0.
+       allocate(rhs_tbt    (1,kx_start:kx_end,0:kmax));    rhs_tbt     = 0.
+       tracer_bt = filter_t* &
+            make_tracer('',tracer_bt_init_file,"tracer_bt", 1)
+       call Message('tracer_bt fields allocated')
+    endif
+
     if (use_tracer_x) then
        allocate(tracer_x  (1:nzt,kx_start:kx_end,0:kmax));    tracer_x = 0.
        allocate(tracer_x_o(1:nzt,kx_start:kx_end,0:kmax));    tracer_x_o = 0.
        allocate(rhs_tx    (1:nzt,kx_start:kx_end,0:kmax));    rhs_tx = 0.
        tracer_x = filter_t*  &
-            make_tracer('',tracer_x_init_file,"tracer_x")
+            make_tracer('',tracer_x_init_file,"tracer_x", nzt)
        call Message('Tracer_x fields allocated')
     endif
 
@@ -110,9 +127,11 @@ contains
        allocate(tracer_y_o(1:nzt,kx_start:kx_end,0:kmax));     tracer_y_o = 0.
        allocate(rhs_ty    (1:nzt,kx_start:kx_end,0:kmax));     rhs_ty = 0.
        tracer_y = filter_t*  &
-            make_tracer('',tracer_y_init_file,"tracer_y")
+            make_tracer('',tracer_y_init_file,"tracer_y", nzt)
        call Message('Tracer_y fields allocated')
     endif
+
+    reset_tracer = .false.
 
     ! Get strat data for extrapolation to higher number of layers
     allocate(dzt(1:nzt));                                     dzt = 0.
@@ -147,13 +166,9 @@ contains
        ubart = ubar
        vbart = vbar
     else
-       call Message('nzt < nz: less tracer levels than model levels') 
-       if (nzt == 1) then
-           vmodet(1:nzt,:) = 1.
-       else
-           call Message('nzt < nz and nzt is not 1 is not implemented', fatal='y')
-           parameters_ok = .false.
-       endif
+       call Message('nzt < nz: take caution of what you are doing!')
+       dzt = 1.0
+       vmodet = 1.0
     end if
 
     ! Initialize operator for implicit method if vertical diffusion turned on
@@ -174,8 +189,9 @@ contains
 
     endif
 
-    tracer_x_o = tracer_x
-    tracer_y_o = tracer_y
+    tracer_x_o  = tracer_x
+    tracer_y_o  = tracer_y
+    tracer_bt_o = tracer_bt
 
     call get_rhs_tracer
 
@@ -185,7 +201,7 @@ contains
 
   !************************************************************************
 
-  function make_tracer(tracer_file, tracer_init_file,tracer_name) &
+  function make_tracer(tracer_file, tracer_init_file, tracer_name, num_layers) &
        result(tracer)
 
     !************************************************************************
@@ -204,7 +220,7 @@ contains
 
     use op_rules,        only: operator(+), operator(-), operator(*)
     use io_tools,        only: Message, Read_field
-    use qg_params,       only: kx_start, kx_end, kmax, ngrid, nkx, nky, nzt, nz, &
+    use qg_params,       only: kx_start, kx_end, kmax, ngrid, nkx, nky, nz,      &
                                parameters_ok, cr, ci, io_root,                   &
                                frame, start_frame, start_frame_t, rewindfrm,     &
                                tracer_init_type, restarting,                     &
@@ -217,7 +233,8 @@ contains
     use par_tools,       only: par_scatter, par_sync
     use nc_io_tools,     only: read_nc
 
-    complex,dimension(1:nzt,1:nkx,0:kmax)        :: tracer
+    integer, intent(in)                          :: num_layers
+    complex,dimension(1:num_layers,1:nkx,0:kmax) :: tracer
     character(*), intent(in)                     :: tracer_file
     character(*), intent(in)                     :: tracer_init_file
     character(*), intent(in)                     :: tracer_name
@@ -226,14 +243,9 @@ contains
 
     if (restarting .and. (.not. reset_tracer)) then
 
-       allocate(tracer_global(1:nzt,-kmax-1:kmax,0:kmax)); tracer_global=0.
-       if (.not.rewindfrm) then
-          call read_nc("./INPUT/"//trim(nc_restartfile), tracer_name, &
+       allocate(tracer_global(1:num_layers,-kmax-1:kmax,0:kmax)); tracer_global=0.
+       call read_nc("./INPUT/"//trim(nc_restartfile), tracer_name, &
                        tracer_global(:,-kmax:kmax,:)) 
-       else
-          call read_nc("./INPUT/"//trim(nc_restartfile), tracer_name, &
-                       tracer_global(:,-kmax:kmax,:))
-       endif
        call par_scatter(tracer_global,tracer,io_root)
        deallocate(tracer_global)
 
@@ -260,7 +272,7 @@ contains
                &//trim(tracer_init_file)//', frame:', tag=start_frame_t)
 
 
-          allocate(tracer_global(1:nzt,-kmax-1:kmax,0:kmax)); tracer_global=0.
+          allocate(tracer_global(1:num_layers,-kmax-1:kmax,0:kmax)); tracer_global=0.
           call Message('Will read initial tracer field from: '&
                &//trim(tracer_init_file))
           call Read_field(tracer_global(:,-kmax:kmax,:),tracer_init_file, &
@@ -277,7 +289,6 @@ contains
 
     end if
 
-    reset_tracer = .false.
     call par_sync
 
   end function  make_tracer
@@ -288,7 +299,8 @@ contains
 
     use op_rules,      only: operator(+), operator(-), operator(*)
     use numerics_lib,  only: march, march_implicit
-    use qg_params,     only: dt, call_tx, call_ty, robert, use_tracer_x, use_tracer_y, &
+    use qg_params,     only: dt, call_tx, call_ty, call_tbt, robert, &
+                             use_tracer_x, use_tracer_y, use_tracer_bt, &
                              kappa_v
 
     if (kappa_v==0) then
@@ -304,6 +316,8 @@ contains
                                                             op_tracer,dt,robert,call_ty)
     endif
 
+    if (use_tracer_bt) tracer_bt = filter_t*March(tracer_bt,tracer_bt_o,rhs_tbt,dt,robert,call_tbt)
+
     call get_rhs_tracer
 
   end subroutine step_tracers
@@ -316,8 +330,9 @@ contains
     use strat_tools,        only: Layer2mode, Mode2layer
     use qg_arrays,          only: psi, kx_, ky_, ksqd_
     use qg_strat_and_shear, only: dz, vmode, ubar, vbar
-    use qg_params,          only: maxmode, nz, nzt, i, kmax, nkx, nky, kappa_v, kappa_h, &
-                                  use_tracer_x, use_tracer_y, use_mean_grad_t
+    use qg_params,          only: maxmode, nz, nzt, i, kmax, nkx, nky, kappa_v, &
+                                  kappa_h, use_tracer_x, use_tracer_y, &
+                                  use_tracer_bt, use_mean_grad_t
     use transform_tools,    only: jacob
     use numerics_lib,       only: diffz2
 
@@ -337,6 +352,16 @@ contains
        endif
     else
        psi_stir = psi
+    endif
+
+    if (use_tracer_bt) then
+        do iy = 1, size(psi, 3)
+          do ix = 1, size(psi, 2)
+          psi_bt_stir(1,ix,iy) = dot_product(vmode_x_dz, psi(:,ix,iy))
+          enddo
+        enddo
+        call Jacob(tracer_bt(1,:,:), psi_bt_stir(1,:,:), rhs_tbt(1,:,:))
+        if (use_mean_grad_t) rhs_tbt = rhs_tbt - i*(kx_*psi_bt_stir)
     endif
 
     if (use_tracer_x) then

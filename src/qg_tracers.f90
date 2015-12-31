@@ -104,7 +104,7 @@ contains
 
     if (use_tracer_bt) then
        allocate(vmode_x_dz(nz))
-       vmode_x_dz = vmode(:,1)*dz
+       vmode_x_dz(:) =  vmode(:,1)*dz(:)
        allocate(tracer_bt  (1,kx_start:kx_end,0:kmax));    tracer_bt   = 0.
        allocate(tracer_bt_o(1,kx_start:kx_end,0:kmax));    tracer_bt_o = 0.
        allocate(rhs_tbt    (1,kx_start:kx_end,0:kmax));    rhs_tbt     = 0.

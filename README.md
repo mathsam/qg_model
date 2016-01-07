@@ -1,3 +1,17 @@
+#Instructions on build:
+
+It uses fftw-2.1.5 (the highest 2.x version available).  This is necessary, because the 3x versions cannot (for some reason) use both MPI and fortran.  I don't know the current architecture of the GFDL machines, but basically the steps are as follows:
+
+1.  Figure out what is the MPI version of F90 and C compilers (usually there is some wrapper around the compiler, called something like 'mpif90' - even if it's really using ifort).  
+2.  Install fftw-2.1.5 with MPI enabled and pointing it to the above compilers. The configure line should be something like:
+
+./configure --enable-mpi --prefix=$HOME/fftw-mpi/ CC="/opt/bin/mpicc" F77="/opt/bin/mpif90"
+
+May need to try use compiler wraper on gaea.
+
+3. Once you get that done, you can modify the mkmf template in the attached directory.  This should be modified to include the correct flags for the underlying compiler, and it needs to pointed to the right location for the libraries (if you install fftw yourself, as above, the location of the fftw libraries would be $HOME/fftw-mpi/lib/ )
+
+4.  Then you can `make` the code, and put your executable where you want it, and try some test runs.
 
 12/20/07: With J Marshall, discovered that tracer equation is stirred
 only by initial (target) mean velocity.  Whe time-varying mean state
@@ -63,3 +77,6 @@ Version 4.43:  Includes:
 diffz in numerics_lib
 Get_corrs in qg_diagnostics
 do_corrs in qg_params
+
+
+

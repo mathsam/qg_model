@@ -125,6 +125,7 @@ module qg_params                   !-*-f90-*-
   logical                 :: use_forcing = .false.     ! Use rndm markov frcing
   logical                 :: norm_forcing= .false.     ! Norm gen rate from RMF
   logical                 :: norm_diss   = .false.     ! Norm diss rate in RMF
+  logical                 :: output_forcing = .false.  ! whether to write forcing to netcdf history.nc file
   real                    :: forc_coef   = cr          ! BT forcing coefficient
   real                    :: forc_corr   = cr          ! BT forcing correlation
   real                    :: kf_min      = cr          ! min k^2 for BT frc
@@ -290,7 +291,7 @@ module qg_params                   !-*-f90-*-
   namelist/run_params/hb_in_file
   
   ! Random Forcing
-  namelist/run_params/use_forcing,norm_forcing,norm_diss
+  namelist/run_params/use_forcing,norm_forcing,norm_diss, output_forcing
   namelist/run_params/forc_coef,forc_corr,kf_min,kf_max,z_force
 
   ! Tracer

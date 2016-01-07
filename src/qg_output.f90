@@ -12,7 +12,7 @@ module qg_output
   implicit none
   private
   integer :: psi_var_id, tracerx_var_id, tracery_var_id, time_var_id, &
-             tracerbt_var_id
+             tracerbt_var_id, force_var_id
   integer :: restart_psi_var_id, restart_tracerx_var_id,   &
              restart_tracery_var_id, restart_force_var_id, &
              restart_tracerbt_var_id
@@ -36,7 +36,8 @@ contains
                          start_frame, frame, d1frame, d2frame, rewindfrm,  & 
                          write_step, diag1_step, diag2_step,                   &
                          do_spectra, restarting, restart_step, nc_restartfile, &
-                         use_tracer_x, use_tracer_y, use_tracer_bt, nzt, kmax
+                         use_tracer_x, use_tracer_y, use_tracer_bt, nzt, kmax, &
+                         use_forcing, output_forcing
     use nc_io_tools, only : create_file, enddef_file, register_variable,     &
                             create_axis_time, create_axis_kx, create_axis_ky,&
                             create_axis_z, create_axis_real_and_imag,        &
@@ -145,6 +146,10 @@ contains
                   register_variable(history_file_id, "tracer_bt",  &
         (/axis_bt_id, axis_kx_id, axis_ky_id, axis_compl_id, axis_time_id/), .true.)
 
+    if (use_forcing .AND. output_forcing) force_var_id = &
+                  register_variable(history_file_id, "rm_forcing",  &
+        (/axis_kx_id, axis_ky_id, axis_compl_id, axis_time_id/), .true.)
+
     time_var_id = register_variable(history_file_id, "time", &
         (/axis_time_id/), .false.)
 
@@ -168,15 +173,17 @@ contains
     use io_tools,    only: Message
     use qg_params,   only: kmax, nz, nzt,                 &
                            use_tracer_x, use_tracer_y, use_tracer_bt, &
-                           time, io_root
+                           time, io_root, use_forcing, output_forcing
     use qg_arrays,   only: psi
     use qg_tracers,  only: tracer_x, tracer_y, tracer_bt
+    use rmf_forcing, only: force_o
     use par_tools,   only: par_gather, processor_id, par_sync
     use nc_io_tools, only: write_nc
 
     integer,intent(in)                    :: framein
     integer                               :: frameout
     complex,dimension(:,:,:),allocatable  :: psi_global, tracer_global
+    complex,dimension(:,:), allocatable   :: force_global
 
     frameout = framein + 1                ! Update field frame counter
 
@@ -205,6 +212,14 @@ contains
       tracer_bt_global = 0.
       call par_gather(tracer_bt,tracer_bt_global,io_root)
       call write_nc(tracerbt_var_id, tracer_bt_global(:,-kmax:kmax,:))
+   endif
+
+   if (use_forcing .AND. output_forcing) then
+      allocate(force_global(-kmax-1:kmax,0:kmax))
+      force_global = 0.
+      call par_gather(force_o, force_global, io_root)
+      call write_nc(force_var_id, force_global(-kmax:kmax,:))
+      deallocate(force_global)
    endif
 
    call write_nc(time_var_id, time)

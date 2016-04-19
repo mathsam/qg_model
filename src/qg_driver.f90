@@ -24,6 +24,7 @@ program qg_driver
   use op_rules,               only: operator(+), operator(-), operator(*)
   use nc_io_tools,            only: close_all_files
   use qg_sponge,              only: init_qg_sponge
+  use qg_advect,              only: init_qg_advect
 
   implicit none
 
@@ -47,6 +48,8 @@ program qg_driver
   if (sponge_rate > 0.) then
      call init_qg_sponge()
   endif
+
+  call init_qg_advect()
 
   call Get_rhs                   ! below
   if (do_energetics) call init_get_energetics()
@@ -117,6 +120,7 @@ contains
     use qg_topo,            only: hb, toposhift
     use transform_tools,    only: grid2spec, spec2grid, ir_pwr, ir_prod
     use qg_sponge,          only: apply_sponge
+    use qg_advect,          only: get_advection
     complex,dimension(nz,ny,ngrid) :: q_pgrid ! PV on physical grid
 
     if (.not.linear) then
@@ -128,10 +132,10 @@ contains
        if (use_topo) q(nz,:,:) = q(nz,:,:) - hb
        if (sponge_rate > 0.) then
            call spec2grid(q, q_pgrid) 
-           call Grid2spec(-ir_prod(ug,qxg) - ir_prod(vg,qyg) &
+           call Grid2spec(get_advection(ug,vg,qxg,qyg) &
                           + apply_sponge(q_pgrid), rhs)
        else
-           call Grid2spec(-ir_prod(ug,qxg) - ir_prod(vg,qyg),rhs)
+           call Grid2spec(get_advection(ug,vg,qxg,qyg), rhs)
        endif
          
       if (quad_drag/=0) then  

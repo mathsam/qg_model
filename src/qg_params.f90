@@ -237,6 +237,8 @@ module qg_params                   !-*-f90-*-
   real                    :: sponge_rate  = -1.0 ! negative value mean no sponge in use
   real                    :: sponge_width = 3.14159265358979/10.0 ! between (0,pi) as domain is [0, 2*pi]
 
+  logical                 :: turn_off_eddy_eddy = .false. !if turn off eddy-eddy interations and thus use quasi-linear dynamics
+
   ! Cabalistic numbers 
 
   real,parameter          :: pi          = 3.14159265358979
@@ -319,6 +321,9 @@ module qg_params                   !-*-f90-*-
 
   ! sponge params
   namelist/run_params/sponge_rate,sponge_width
+
+  ! qg_advect params
+  namelist/run_params/turn_off_eddy_eddy
 
   ! End of Namelist definition
 

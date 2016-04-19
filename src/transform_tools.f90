@@ -43,7 +43,8 @@ module transform_tools
   integer,dimension(:),allocatable        :: cpu
   logical                                 :: first_lhp_pe, first_rhp_pe
 
-  public :: Init_transform, Spec2grid, Grid2spec, Jacob, ir_prod, ir_pwr
+  public :: Init_transform, Spec2grid, Grid2spec, Jacob, ir_prod, ir_pwr, &
+            ir_prod_eddy_mean, ir_prod_mean_eddy
   
   interface Spec2grid
      module procedure Spec2grid_cc2, Spec2grid_cc3
@@ -487,6 +488,52 @@ contains
     prod = cmplx(real(f)*real(g),aimag(f)*aimag(g))
 
   end function ir_prod3
+
+  !*******************************************************************
+
+  function ir_prod_eddy_mean(f,g) result(prod)
+
+    ! This is for doing the special multiply of physical fields,
+    ! assuming that fields on the staggered grid are stored as the
+    ! imaginary component.
+    ! eddy_field x zonal_mean_field
+    ! eddy_field has shape (nz,ny,ngrid) 
+    ! and zonal_mean_field has shape (nz,ny)
+
+    complex,dimension(:,:,:),intent(in)               :: f
+    complex,dimension(:,:),intent(in)                 :: g 
+    complex,dimension(size(f,1),size(f,2),size(f,3))  :: prod
+    integer :: ix
+    
+    do ix = 1, size(f,3)
+      prod(:,:,ix) = cmplx(real(f(:,:,ix))*real(g), &
+                           aimag(f(:,:,ix))*aimag(g))
+    enddo
+
+  end function ir_prod_eddy_mean
+
+  !*******************************************************************
+
+  function ir_prod_mean_eddy(f,g) result(prod)
+
+    ! This is for doing the special multiply of physical fields,
+    ! assuming that fields on the staggered grid are stored as the
+    ! imaginary component.
+    ! zonal_mean_field x eddy_field
+    ! eddy_field has shape (nz,ny,ngrid) 
+    ! and zonal_mean_field has shape (nz,ny)
+
+    complex,dimension(:,:),intent(in)                 :: f
+    complex,dimension(:,:,:),intent(in)               :: g 
+    complex,dimension(size(g,1),size(g,2),size(g,3))  :: prod
+    integer :: ix
+    
+    do ix = 1, size(g,3)
+      prod(:,:,ix) = cmplx(real(f)*real(g(:,:,ix)), &
+                           aimag(f)*aimag(g(:,:,ix)))
+    enddo
+
+  end function ir_prod_mean_eddy
 
   !*******************************************************************
 
